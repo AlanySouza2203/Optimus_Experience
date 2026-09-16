@@ -1,0 +1,257 @@
+.hero-section {
+  position: relative;
+  padding-top: 9rem;
+  padding-bottom: 5rem;
+  overflow: hidden;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
+}
+
+.hero-container {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.hero-content { max-width: 650px; }
+
+.hero-badge {
+  margin-bottom: 1.5rem;
+}
+
+.hero-title {
+  font-size: 3.2rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+  color: #0F172A;
+}
+
+.hero-subtitle {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin-bottom: 2.25rem;
+  max-width: 540px;
+}
+
+.hero-subtitle strong {
+  color: var(--text-main);
+  font-weight: 700;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2.75rem;
+  flex-wrap: wrap;
+}
+
+.btn-hero {
+  padding: 1rem 2rem;
+  font-size: 1rem;
+}
+
+.hero-trust-bar {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.trust-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+}
+
+.trust-icon {
+  color: var(--primary);
+}
+
+.trust-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-color);
+}
+
+.rating-stars {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.star-fill {
+  color: #F59E0B;
+  fill: #F59E0B;
+}
+
+.rating-num {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.rating-count {
+  color: var(--text-dim);
+}
+
+/* Visual Column */
+.hero-visual {
+  position: relative;
+}
+
+.hero-card-glow {
+  position: absolute;
+  inset: -10px;
+  background: linear-gradient(135deg, rgba(5, 150, 105, 0.12), rgba(13, 148, 136, 0.08));
+  border-radius: calc(var(--radius-lg) + 8px);
+  filter: blur(20px);
+  z-index: 0;
+  opacity: 0.8;
+}
+
+.hero-card {
+  position: relative;
+  z-index: 1;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.08);
+}
+
+.vehicle-image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  overflow: hidden;
+}
+
+.hero-car-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(0.12) contrast(1.04);
+  transition: transform 0.6s ease;
+}
+
+.hero-card:hover .hero-car-img {
+  transform: scale(1.04);
+}
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.02) 35%, rgba(255, 255, 255, 0.08) 100%);
+}
+
+.hero-spec-card {
+  padding: 1rem 1.25rem 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #FFFFFF;
+  border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.spec-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+}
+
+.car-icon-badge {
+  width: 40px;
+  height: 40px;
+  background: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.18);
+  color: var(--primary);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.spec-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.spec-price {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+}
+
+.spec-price strong {
+  color: var(--primary);
+}
+
+.hero-spec-card .badge-status {
+  background: rgba(5, 150, 105, 0.08);
+  border-color: rgba(5, 150, 105, 0.2);
+  color: var(--primary);
+  padding: 0.4rem 0.8rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .hero-container {
+    grid-template-columns: 1fr;
+    gap: 3rem;
+  }
+
+  .hero-title {
+    font-size: 2.6rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-section {
+    padding-top: 7.5rem;
+    padding-bottom: 3.5rem;
+  }
+
+  .hero-title {
+    font-size: 2.1rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .btn-hero {
+    width: 100%;
+  }
+
+  .hero-trust-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .trust-divider {
+    display: none;
+  }
+
+  .hero-spec-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

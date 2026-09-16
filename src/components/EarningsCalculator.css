@@ -1,0 +1,118 @@
+.calculator-section {
+  position: relative;
+}
+
+.calculator-card {
+  border-color: var(--border-glow);
+  background: linear-gradient(135deg, rgba(15, 20, 31, 0.95) 0%, rgba(11, 15, 23, 0.98) 100%);
+  padding: 3rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.calc-header {
+  text-align: center;
+  max-width: 650px;
+  margin: 0 auto 2.5rem auto;
+}
+
+.calc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 229, 153, 0.1);
+  border: 1px solid var(--border-glow);
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  margin-bottom: 1rem;
+}
+
+.calc-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  margin-bottom: 0.75rem;
+}
+
+.calc-subtitle {
+  color: var(--text-muted);
+  font-size: 1rem;
+}
+
+.calc-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  align-items: center;
+}
+
+.calc-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.control-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  color: var(--text-main);
+}
+
+.control-label strong {
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.calc-range {
+  width: 100%;
+  accent-color: var(--primary);
+  height: 6px;
+  background: #1E293B;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+}
+
+.calc-select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  background: #0B0E17;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: #FFFFFF;
+  font-family: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.calc-select:focus {
+  border-color: var(--primary);
+}
+
+
+@media (max-width: 900px) {
+  .calculator-card {
+    padding: 1.5rem;
+  }
+}
