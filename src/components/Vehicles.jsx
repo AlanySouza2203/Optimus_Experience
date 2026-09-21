@@ -237,6 +237,17 @@ export const localBackupData = [
 
 
 const categories = ['Todos', 'Econômico', 'Sedan'];
+const normalizeVehicle = (vehicle) => ({
+  ...vehicle,
+  priceWeekly: vehicle.priceWeekly ?? vehicle.price_weekly ?? 0,
+  specs: vehicle.specs ?? {
+    transm: vehicle.transm ?? 'Não informado',
+    seats: vehicle.seats ?? 'Não informado',
+    fuel: vehicle.fuel ?? 'Não informado',
+    consumption: vehicle.consumption ?? 'Não informado'
+  },
+  features: Array.isArray(vehicle.features) ? vehicle.features : []
+});
 
 
 export default function Vehicles({ onSelectVehicle }) {
@@ -256,7 +267,7 @@ export default function Vehicles({ onSelectVehicle }) {
 
         const data = await response.json();
         if (Array.isArray(data) && data.length > 0) {
-          setVehicles(data);
+          setVehicles(data.map(normalizeVehicle));
         } else {
           setVehicles(localBackupData);
         }
