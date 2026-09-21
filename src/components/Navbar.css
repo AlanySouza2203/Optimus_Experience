@@ -276,7 +276,10 @@
 /* Mobile Media Query Rules */
 @media (max-width: 1200px) {
   .nav-menu,
-  .desktop-actions {
+  .desktop-actions,
+  .nav-login-btn,
+  .nav-support-btn,
+  .nav-cta-btn {
     display: none !important;
   }
 
@@ -284,5 +287,6 @@
     display: flex !important;
   }
 }
+
 
 
