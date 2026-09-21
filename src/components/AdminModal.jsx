@@ -1634,21 +1634,23 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     const date = toMetricDate(value);
     return !Number.isNaN(date.getTime()) && date.getFullYear() === todayForMetrics.getFullYear() && date.getMonth() === todayForMetrics.getMonth();
   };
-  const normalizeMetricText = (value) => String(value || '').trim().toLocaleLowerCase('pt-BR');
+  const normalizeMetricText = (value) => String(value || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+  const isCashEntry = (entry) => normalizeMetricText(entry.type) === 'entrada';
+  const isCashOutflow = (entry) => normalizeMetricText(entry.type) === 'saida';
   // Indicadores financeiros do dashboard: entradas do Fluxo de Caixa e pagamentos recebidos no mês atual.
   const monthlyCashEntries = cashEntries.filter((entry) => isCurrentMonth(entry.entryDate || entry.date));
   const monthlyCashIncome = monthlyCashEntries
-    .filter((entry) => normalizeMetricText(entry.type) === 'entrada')
+    .filter(isCashEntry)
     .reduce((total, entry) => total + Number(entry.value || 0), 0);
   const monthlyPayments = payments
     .filter((payment) => isCurrentMonth(payment.entryDate || payment.date) && ['pago', 'paga', 'paid'].includes(normalizeMetricText(payment.status)))
     .reduce((total, payment) => total + Number(payment.value || 0), 0);
   const monthlyRevenue = monthlyCashIncome + monthlyPayments;
   const monthlyExpenses = monthlyCashEntries
-    .filter((entry) => normalizeMetricText(entry.type) === 'saída')
+    .filter(isCashOutflow)
     .reduce((total, entry) => total + Number(entry.value || 0), 0);
   const monthlyProfit = monthlyRevenue - monthlyExpenses;
-  const monthlyBalance = monthlyProfit;
+  const monthlyBalance = monthlyRevenue;
   const totalVehiclesCount = vehicles.length;
   const paidPaymentVehicles = new Set(payments.filter((payment) => ['pago', 'paga', 'paid'].includes(normalizeMetricText(payment.status)) && payment.vehicle && payment.vehicle !== '—').map((payment) => normalizeMetricText(payment.vehicle)));
   const rentedVehiclesCount = vehicles.filter((vehicle) => paidPaymentVehicles.has(normalizeMetricText(`${vehicle.brand} ${vehicle.name}`))).length;
@@ -1664,8 +1666,8 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     { label: 'Em manutenção', value: maintenanceVehiclesCount, color: '#f5a623' },
     { label: 'Reservas', value: reservedVehiclesCount, color: '#8b5cf6' }
   ];
-  const chartRevenueEntries = dashboardCashEntries.filter((entry) => normalizeMetricText(entry.type) === 'entrada');
-  const chartExpenseEntries = dashboardCashEntries.filter((entry) => normalizeMetricText(entry.type) === 'saída');
+  const chartRevenueEntries = cashEntries.filter(isCashEntry);
+  const chartExpenseEntries = cashEntries.filter(isCashOutflow);
   const chartMaximumValue = Math.max(1, ...chartRevenueEntries.map((entry) => Number(entry.value) || 0), ...chartExpenseEntries.map((entry) => Number(entry.value) || 0));
   const chartMonths = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label, index) => ({
     label,
@@ -1720,6 +1722,20 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
       && (reportClientFilter === 'Todos' || client === reportClientFilter)
       && (reportDriverFilter === 'Todos' || driver === reportDriverFilter);
   });
+  const reportCashEntries = cashEntries.filter((entry) => {
+    const entryDate = entry.entryDate || entry.date;
+    const statusMatches = reportStatusFilter === 'Todos' || normalizeMetricText(entry.status) === normalizeMetricText(reportStatusFilter);
+    return entryDate && asDate(entryDate) >= reportStart && asDate(entryDate) <= reportEnd && statusMatches;
+  });
+  const reportCashIncome = reportCashEntries.filter(isCashEntry).reduce((total, entry) => total + Number(entry.value || 0), 0);
+  const reportCashExpenses = reportCashEntries.filter(isCashOutflow).reduce((total, entry) => total + Number(entry.value || 0), 0);
+  const reportCashBalance = reportCashIncome - reportCashExpenses;
+  const reportChartMaximum = Math.max(1, ...reportCashEntries.map((entry) => Number(entry.value) || 0));
+  const reportChartDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label, index) => ({
+    label,
+    revenue: index === 6 ? 0 : ((Number(reportCashEntries.filter(isCashEntry)[index]?.value) || 0) / reportChartMaximum) * 100,
+    expense: index === 6 ? 0 : ((Number(reportCashEntries.filter(isCashOutflow)[index]?.value) || 0) / reportChartMaximum) * 100
+  }));
   const reportStatusCount = (names) => periodRecords.filter((record) => names.includes((record.status || 'Pendente').toLowerCase())).length;
   const totalReportRecords = periodRecords.length;
   const completedRecords = reportStatusCount(['concluída', 'concluida', 'encerrada', 'resolvido']);
@@ -1732,9 +1748,19 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     const link = document.createElement('a'); link.href = url; link.download = `${filename}.${type}`; link.click(); URL.revokeObjectURL(url);
   };
   const exportReportsCsv = () => downloadReport([['Tipo', 'Status', 'Data', 'Valor'], ...periodRecords.map((record) => [record.reportType, record.status || 'Pendente', asDate(reportDate(record)).toLocaleDateString('pt-BR'), record.value || ''])], 'relatorio-optimus');
-  // O painel inicia sem registros relacionados a clientes.
-  const dashboardAlerts = [];
-  const recentRentals = [];
+  // Mostra no dashboard as pendências que ainda exigem atenção, usando a mesma
+  // origem da central de notificações.
+  const dashboardAlerts = automaticNotifications
+    .filter((notification) => notification.unread && notification.level !== 'resolved')
+    .slice(0, 5)
+    .map((notification) => ({
+      id: notification.id,
+      title: notification.title,
+      detail: `${notification.subject} — ${notification.description}`,
+      target: notification.target,
+      type: notification.level === 'urgent' ? 'danger' : notification.level === 'attention' ? 'warning' : 'info'
+    }));
+
 
   const sidebarSections = [
     {
@@ -1818,13 +1844,13 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     [reportItems[3].name]: contracts,
     [reportItems[4].name]: inspections,
     [reportItems[5].name]: maintenances,
-    [reportItems[6].name]: [...rentals.filter((item) => item.status !== 'Cancelada'), ...payments, ...cashEntries.filter((item) => item.type === 'Entrada')],
-    [reportItems[7].name]: [...maintenances, ...fines, ...cashEntries.filter((item) => item.type === 'Saída')],
+    [reportItems[6].name]: cashEntries.filter(isCashEntry),
+    [reportItems[7].name]: cashEntries.filter(isCashOutflow),
     [reportItems[8].name]: collections,
     [reportItems[9].name]: payments,
     [reportItems[10].name]: cashEntries,
     [reportItems[12].name]: clients,
-    [reportItems[13].name]: [],
+    [reportItems[13].name]: drivers,
     [reportItems[14].name]: fines,
     [reportItems[15].name]: incidents,
     [reportItems[16].name]: supportRequests
@@ -1838,7 +1864,21 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     return { vehicle: vehicleName, revenue, expenses, profit: revenue - expenses, occupancy: rentals.length ? Math.round(vehicleRentals.filter((item) => item.status === 'Ativa').length / rentals.length * 100) : 0 };
   });
   const selectedReportRows = selectedReport === reportItems[11].name ? fleetProfitabilityRows : (reportSourceRows[selectedReport] || []);
-  const normalizedReportRows = selectedReportRows.filter((row) => {
+  const filteredSelectedReportRows = selectedReportRows.filter((row) => {
+    const status = normalizeMetricText(row.status);
+    const vehicle = row.vehicleName || row.vehicle || '';
+    const client = row.client || row.clientName || row.name || '';
+    const driver = row.driver || row.driverName || row.fullName || row.name || '';
+    const rowDate = row.entryDate || row.paidAt || row.createdAt || row.date || row.startDate;
+    const dateMatches = !rowDate || (asDate(rowDate) >= reportStart && asDate(rowDate) <= reportEnd);
+
+    return dateMatches
+      && (reportStatusFilter === 'Todos' || status === normalizeMetricText(reportStatusFilter))
+      && (reportVehicleFilter === 'Todos' || vehicle === reportVehicleFilter)
+      && (reportClientFilter === 'Todos' || client === reportClientFilter)
+      && (reportDriverFilter === 'Todos' || driver === reportDriverFilter);
+  });
+  const normalizedReportRows = filteredSelectedReportRows.filter((row) => {
     const text = Object.values(row).join(' ').toLowerCase();
     return !reportSearch || text.includes(reportSearch.toLowerCase());
   });
@@ -2114,22 +2154,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                     </div>
                   </section>
 
-                  <section className="dashboard-list-panel rentals-panel">
-                    <h3>Locações Recentes</h3>
-                    <div className="dashboard-table-scroll">
-                      <table className="recent-rentals-table">
-                        <thead><tr><th>Motorista</th><th>Veículo</th><th>Plano</th><th>Período</th><th>Valor</th><th>Status</th></tr></thead>
-                        <tbody>{recentRentals.length === 0 ? (
-                          <tr><td colSpan="6" className="table-empty-state">Nenhuma locação de cliente registrada.</td></tr>
-                        ) : recentRentals.map((rental) => (
-                          <tr key={`${rental[0]}-${rental[1]}`}>
-                            <td>{rental[0]}</td><td>{rental[1]}</td><td>{rental[2]}</td><td>{rental[3]}</td><td><strong>{rental[4]}</strong></td>
-                            <td><span className={`rental-status ${rental[5].toLowerCase()}`}>{rental[5]}</span></td>
-                          </tr>
-                        ))}</tbody>
-                      </table>
-                    </div>
-                  </section>
+
                 </div>
               )}
 
@@ -2186,11 +2211,9 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <section className="report-panel report-ranking-panel"><div className="report-panel-heading"><div><h3>Veículos mais alugados</h3><p>Ranking por número de locações</p></div></div>{fleetProfitabilityRows.slice().sort((a, b) => b.revenue - a.revenue).slice(0, 5).map((item, index, ranking) => <div className="report-status-row" key={item.vehicle}><div><span>{index + 1}. {item.vehicle}</span><b>{rentals.filter((rental) => (rental.vehicleName || rental.vehicle) === item.vehicle).length} locações</b></div><div className="report-progress"><i className="category" style={{ width: `${ranking[0]?.revenue ? Math.max(8, item.revenue / ranking[0].revenue * 100) : 8}%` }} /></div></div>)}</section>
 
                   <div className="reports-chart-grid">
-                    <section className="report-panel revenue-chart"><div className="report-panel-heading"><div><h3>Financeiro</h3><p>Entradas e saídas registradas</p></div><strong>{formatCurrency(monthlyProfit)}</strong></div><div className="report-bars">{chartMonths.map((month) => <div className="report-bar-group" key={month.label}><div className="report-bar revenue" style={{ height: `${month.revenue ? Math.max(20, month.revenue / Math.max(monthlyRevenue, 1) * 100) : 4}%` }} /><div className="report-bar expense" style={{ height: `${month.expense ? Math.max(20, month.expense / Math.max(monthlyExpenses, 1) * 100) : 4}%` }} /><span>{month.label}</span></div>)}</div><div className="chart-legend"><span><i className="revenue" />Receitas {formatCurrency(monthlyRevenue)}</span><span><i className="expense" />Despesas {formatCurrency(monthlyExpenses)}</span></div></section>
+                    <section className="report-panel revenue-chart"><div className="report-panel-heading"><div><h3>Financeiro</h3><p>Entradas e saídas do Fluxo de Caixa no período filtrado</p></div><strong>{formatCurrency(reportCashBalance)}</strong></div><div className="report-bars">{reportChartDays.map((day) => <div className="report-bar-group" key={day.label}><div className="report-bar revenue" style={{ height: `${day.revenue ? Math.max(20, day.revenue) : 4}%` }} /><div className="report-bar expense" style={{ height: `${day.expense ? Math.max(20, day.expense) : 4}%` }} /><span>{day.label}</span></div>)}</div><div className="chart-legend"><span><i className="revenue" />Receitas {formatCurrency(reportCashIncome)}</span><span><i className="expense" />Despesas {formatCurrency(reportCashExpenses)}</span></div></section>
                     <section className="report-panel report-status-panel"><div className="report-panel-heading"><div><h3>Status das operações</h3><p>Distribuição do período</p></div><strong>{completionRate}%</strong></div>{[{ label: 'Concluídos', value: completedRecords, tone: 'active' }, { label: 'Pendentes', value: pendingRecords, tone: 'scheduled' }, { label: 'Cancelados', value: cancelledRecords, tone: 'cancelled' }].map((status) => <div className="report-status-row" key={status.label}><div><span>{status.label}</span><b>{status.value} {totalReportRecords ? `· ${Math.round(status.value / totalReportRecords * 100)}%` : ''}</b></div><div className="report-progress"><i className={status.tone} style={{ width: `${totalReportRecords ? status.value / totalReportRecords * 100 : 0}%` }} /></div></div>)}</section>
                   </div>
-
-                  <div className="reports-insights-grid"><section className="report-panel report-category-panel"><div className="report-panel-heading"><div><h3>Registros por categoria</h3><p>Comparativo entre áreas</p></div></div>{typeBreakdown.length ? typeBreakdown.map((item) => <div className="report-status-row" key={item.type}><div><span>{item.type}</span><b>{item.value} {totalReportRecords ? `· ${Math.round(item.value / totalReportRecords * 100)}%` : ''}</b></div><div className="report-progress"><i className="category" style={{ width: `${item.value / totalReportRecords * 100}%` }} /></div></div>) : <p className="report-empty">Ainda não há registros neste período.</p>}</section><section className="report-panel report-performance-panel"><h3>Desempenho</h3><div className="performance-metrics"><div><span>Taxa de conclusão</span><strong>{completionRate}%</strong></div><div><span>Locações ativas</span><strong>{rentals.filter((rental) => rental.status === 'Ativa').length}</strong></div><div><span>Veículos disponíveis</span><strong>{vehicles.filter((vehicle) => vehicle.status === 'Disponível').length}</strong></div></div><p>Os indicadores são atualizados à medida que novas operações são registradas.</p></section></div>
 
                   <section className="reports-catalog">
                     <div className="report-category-tabs">{reportCategories.map((category) => <button key={category.key} className={reportCategory === category.key ? 'active' : ''} onClick={() => setReportCategory(category.key)}>{category.name}</button>)}</div>
