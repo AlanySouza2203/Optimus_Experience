@@ -5,17 +5,29 @@ import './Navbar.css';
 export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSupport }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 1280);
+      setScrolled(window.scrollY > 20);
+    };
+
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   return (
-    <header className={`navbar pos-f-t ${scrolled ? 'navbar-scrolled' : ''}`}>
+    <div className="pos-f-t">
       {/* External Collapsible Content (pos-f-t pattern) */}
       <div 
         className={`collapse ${mobileMenuOpen ? 'show' : ''}`} 
@@ -66,71 +78,78 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
       </div>
 
       {/* Main Navbar Bar */}
-      <div className="container navbar-container">
-        {/* Brand Logo */}
-        <a href="#" className="navbar-brand">
-          <div className="logo-icon-wrapper">
-            <Car className="logo-icon" size={22} />
+      <header className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
+        <div className="container navbar-container">
+          {/* Brand Logo */}
+          <a href="#" className="navbar-brand">
+            <div className="logo-icon-wrapper">
+              <Car className="logo-icon" size={22} />
+            </div>
+            <div className="logo-text">
+              <span className="brand-name">Optimus</span>
+              <span className="brand-sub">Experience</span>
+            </div>
+          </a>
+
+          {/* Desktop Nav Links */}
+          {!isMobile && (
+            <nav className="nav-menu">
+              <a href="#inicio" className="nav-link">Início</a>
+              <a href="#beneficios" className="nav-link">Benefícios</a>
+              <a href="#veiculos" className="nav-link">Veículos</a>
+              <a href="#planos" className="nav-link">Planos</a>
+              <a href="#como-funciona" className="nav-link">Como funciona</a>
+              <a href="#faq" className="nav-link">FAQ</a>
+              <a href="#contato" className="nav-link">Contato</a>
+            </nav>
+          )}
+
+          {/* Action Buttons */}
+          <div className="nav-actions">
+            {!isMobile && (
+              <div className="desktop-actions">
+                <button 
+                  className="btn btn-secondary btn-sm nav-login-btn"
+                  onClick={onOpenAdmin}
+                >
+                  Área Administrativa
+                </button>
+
+                <button
+                  className="btn btn-secondary btn-sm nav-support-btn"
+                  onClick={onOpenDriverSupport}
+                >
+                  <Headphones size={16} />
+                  Suporte
+                </button>
+                
+                <button 
+                  className="btn btn-primary btn-sm nav-cta-btn"
+                  onClick={onOpenProposal}
+                >
+                  <span>Solicitar proposta</span>
+                </button>
+              </div>
+            )}
+
+            {/* Mobile Toggler Button */}
+            {isMobile && (
+              <button 
+                className="navbar-toggler mobile-toggle" 
+                type="button" 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-controls="navbarToggleExternalContent" 
+                aria-expanded={mobileMenuOpen} 
+                aria-label="Toggle navigation"
+              >
+                <span className="navbar-toggler-icon">
+                  {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+                </span>
+              </button>
+            )}
           </div>
-          <div className="logo-text">
-            <span className="brand-name">Optimus</span>
-            <span className="brand-sub">Experience</span>
-          </div>
-        </a>
-
-        {/* Desktop Nav Links */}
-        <nav className="nav-menu">
-          <a href="#inicio" className="nav-link">Início</a>
-          <a href="#beneficios" className="nav-link">Benefícios</a>
-          <a href="#veiculos" className="nav-link">Veículos</a>
-          <a href="#planos" className="nav-link">Planos</a>
-          <a href="#como-funciona" className="nav-link">Como funciona</a>
-          <a href="#faq" className="nav-link">FAQ</a>
-          <a href="#contato" className="nav-link">Contato</a>
-        </nav>
-
-        {/* Desktop Action Buttons */}
-        <div className="nav-actions">
-          <div className="desktop-actions desktop-only">
-            <button 
-              className="btn btn-secondary btn-sm nav-login-btn"
-              onClick={onOpenAdmin}
-            >
-              Área Administrativa
-            </button>
-
-            <button
-              className="btn btn-secondary btn-sm nav-support-btn"
-              onClick={onOpenDriverSupport}
-            >
-              <Headphones size={16} />
-              Suporte
-            </button>
-            
-            <button 
-              className="btn btn-primary btn-sm nav-cta-btn"
-              onClick={onOpenProposal}
-            >
-              <span>Solicitar proposta</span>
-            </button>
-          </div>
-
-          {/* Mobile Toggler Button */}
-          <button 
-            className="navbar-toggler mobile-toggle" 
-            type="button" 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-controls="navbarToggleExternalContent" 
-            aria-expanded={mobileMenuOpen} 
-            aria-label="Toggle navigation"
-          >
-            <span className="navbar-toggler-icon">
-              {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
-            </span>
-          </button>
         </div>
-      </div>
-    </header>
+      </header>
+    </div>
   );
 }
-
