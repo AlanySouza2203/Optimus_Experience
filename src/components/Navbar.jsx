@@ -5,7 +5,8 @@ import './Navbar.css';
 export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSupport }) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth <= 1280 : false);
+
 
   useEffect(() => {
     const checkMobile = () => {

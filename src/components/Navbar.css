@@ -273,8 +273,8 @@
   width: 100%;
 }
 
-/* Mobile Media Query Rules */
-@media (max-width: 1200px) {
+/* Mobile Media Query Rules - Hides ALL desktop buttons on <= 1280px */
+@media screen and (max-width: 1280px) {
   .nav-menu,
   .desktop-actions,
   .desktop-only,
@@ -283,7 +283,8 @@
   .nav-actions .nav-support-btn,
   .nav-actions .nav-cta-btn,
   header.navbar .desktop-actions,
-  header.navbar .nav-cta-btn {
+  header.navbar .nav-cta-btn,
+  header.navbar .btn-primary {
     display: none !important;
   }
 
