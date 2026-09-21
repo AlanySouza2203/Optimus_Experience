@@ -1,5 +1,4 @@
--- SQL Schema Setup for Optimus Experience
--- Import this schema into your MySQL server to set up the database
+
 
 CREATE DATABASE IF NOT EXISTS optimus_db;
 USE optimus_db;
