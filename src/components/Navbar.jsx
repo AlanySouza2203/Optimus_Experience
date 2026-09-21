@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Car, Menu, X, ChevronRight, Headphones } from 'lucide-react';
+import { Car, Menu, X, ChevronRight, Headphones, Shield } from 'lucide-react';
 import './Navbar.css';
 
 export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSupport }) {
@@ -8,18 +8,64 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
-    <header className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
+    <header className={`navbar pos-f-t ${scrolled ? 'navbar-scrolled' : ''}`}>
+      {/* External Collapsible Content (pos-f-t pattern) */}
+      <div 
+        className={`collapse ${mobileMenuOpen ? 'show' : ''}`} 
+        id="navbarToggleExternalContent"
+      >
+        <div className="bg-dark p-4 mobile-collapsed-content">
+          <div className="mobile-header-info">
+            <div className="mobile-brand-title">
+              <Car size={22} className="text-emerald" />
+              <h5 className="text-white h4 mb-0">Optimus Experience</h5>
+            </div>
+            <span className="text-muted small">Menu de navegação e atalhos rápidos do sistema</span>
+          </div>
+
+          <nav className="mobile-nav-links">
+            <a href="#inicio" onClick={() => setMobileMenuOpen(false)}>Início</a>
+            <a href="#beneficios" onClick={() => setMobileMenuOpen(false)}>Benefícios</a>
+            <a href="#veiculos" onClick={() => setMobileMenuOpen(false)}>Veículos</a>
+            <a href="#planos" onClick={() => setMobileMenuOpen(false)}>Planos</a>
+            <a href="#como-funciona" onClick={() => setMobileMenuOpen(false)}>Como funciona</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
+            <a href="#contato" onClick={() => setMobileMenuOpen(false)}>Contato</a>
+          </nav>
+
+          <hr className="mobile-divider" />
+
+          <div className="mobile-actions-grid">
+            <button 
+              className="btn btn-outline-light btn-full"
+              onClick={() => { setMobileMenuOpen(false); onOpenAdmin(); }}
+            >
+              <Shield size={16} /> Área Administrativa
+            </button>
+            <button
+              className="btn btn-outline-light btn-full"
+              onClick={() => { setMobileMenuOpen(false); onOpenDriverSupport(); }}
+            >
+              <Headphones size={16} /> Suporte ao Motorista
+            </button>
+            <button 
+              className="btn btn-primary btn-full"
+              onClick={() => { setMobileMenuOpen(false); onOpenProposal(); }}
+            >
+              Solicitar proposta <ChevronRight size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Navbar Bar */}
       <div className="container navbar-container">
         {/* Brand Logo */}
         <a href="#" className="navbar-brand">
@@ -43,7 +89,7 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
           <a href="#contato" className="nav-link">Contato</a>
         </nav>
 
-        {/* Action Buttons */}
+        {/* Desktop Action Buttons */}
         <div className="nav-actions">
           <button 
             className="btn btn-secondary btn-sm nav-login-btn"
@@ -67,42 +113,22 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
             <span>Solicitar proposta</span>
           </button>
 
-          {/* Mobile Hamburger Toggle */}
+          {/* Mobile Toggler Button */}
           <button 
-            className="mobile-toggle" 
+            className="navbar-toggler mobile-toggle" 
+            type="button" 
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Abrir menu"
+            aria-controls="navbarToggleExternalContent" 
+            aria-expanded={mobileMenuOpen} 
+            aria-label="Toggle navigation"
           >
-            {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+            <span className="navbar-toggler-icon">
+              {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+            </span>
           </button>
         </div>
       </div>
-
-      {/* Mobile Drawer Navigation */}
-      {mobileMenuOpen && (
-        <div className="mobile-drawer">
-          <nav className="mobile-nav-links">
-            <a href="#inicio" onClick={() => setMobileMenuOpen(false)}>Início</a>
-            <a href="#beneficios" onClick={() => setMobileMenuOpen(false)}>Benefícios</a>
-            <a href="#veiculos" onClick={() => setMobileMenuOpen(false)}>Veículos</a>
-            <a href="#planos" onClick={() => setMobileMenuOpen(false)}>Planos</a>
-            <a href="#como-funciona" onClick={() => setMobileMenuOpen(false)}>Como funciona</a>
-            <a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
-            <a href="#contato" onClick={() => setMobileMenuOpen(false)}>Contato</a>
-            <button className="mobile-support-link" onClick={() => { setMobileMenuOpen(false); onOpenDriverSupport(); }}><Headphones size={18} /> Suporte</button>
-            <hr className="mobile-divider" />
-            <button 
-              className="btn btn-primary btn-full"
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenProposal();
-              }}
-            >
-              Solicitar proposta <ChevronRight size={18} />
-            </button>
-          </nav>
-        </div>
-      )}
     </header>
   );
 }
+
