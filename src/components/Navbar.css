@@ -33,7 +33,7 @@
 }
 
 .collapse.show {
-  max-height: 600px;
+  max-height: 650px;
   opacity: 1;
   border-bottom: 2px solid var(--primary);
   box-shadow: 0 15px 35px rgba(0, 0, 0, 0.35);
@@ -214,4 +214,26 @@
 
 .btn-full {
   width: 100%;
+}
+
+/* Mobile Media Query: Dark theme matching Bootstrap navbar-dark bg-dark */
+@media screen and (max-width: 1024px) {
+  .navbar {
+    background: #0F172A !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  .navbar .brand-name {
+    color: #FFFFFF !important;
+  }
+
+  .navbar-toggler {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: #FFFFFF !important;
+  }
+  
+  .navbar-toggler:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+  }
 }
