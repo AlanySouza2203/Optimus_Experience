@@ -23,15 +23,14 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
       <div 
         className={`collapse ${mobileMenuOpen ? 'show' : ''}`} 
         id="navbarToggleExternalContent"
-        style={{ background: '#0F172A' }}
       >
         <div className="bg-dark p-4 mobile-collapsed-content">
           <div className="mobile-header-info">
             <div className="mobile-brand-title">
-              <Car size={24} className="text-emerald" style={{ color: '#10B981' }} />
-              <h5 className="text-white h4 mb-0" style={{ color: '#FFFFFF', margin: 0 }}>Optimus Experience</h5>
+              <Car size={22} className="text-emerald" />
+              <h5 className="text-white h4 mb-0">Optimus Experience</h5>
             </div>
-            <span className="text-muted small" style={{ color: '#94A3B8' }}>Menu de navegação e atalhos rápidos do sistema</span>
+            <span className="text-muted small">Menu de navegação e atalhos rápidos do sistema</span>
           </div>
 
           <nav className="mobile-nav-links">
@@ -69,22 +68,58 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
         </div>
       </div>
 
-      {/* Navbar Header Bar - Exibe EXCLUSIVAMENTE a Logo (esquerda) e o ícone (≡) (direita) */}
-      <header className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`} style={{ background: '#0F172A', borderBottom: '1px solid rgba(255, 255, 255, 0.1)', padding: '0.8rem 0' }}>
-        <div className="container navbar-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Main Navbar Bar */}
+      <header className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
+        <div className="container navbar-container">
           {/* Brand Logo (esquerda) */}
-          <a href="#" className="navbar-brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none' }}>
-            <div className="logo-icon-wrapper" style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10B981', borderRadius: '10px', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Car className="logo-icon" size={24} style={{ color: '#10B981' }} />
+          <a href="#" className="navbar-brand">
+            <div className="logo-icon-wrapper">
+              <Car className="logo-icon" size={22} />
             </div>
-            <div className="logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
-              <span className="brand-name" style={{ color: '#FFFFFF', fontWeight: 800, fontSize: '1.2rem' }}>Optimus</span>
-              <span className="brand-sub" style={{ color: '#10B981', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em' }}>EXPERIENCE</span>
+            <div className="logo-text">
+              <span className="brand-name">Optimus</span>
+              <span className="brand-sub">Experience</span>
             </div>
           </a>
 
-          {/* Ícone de 3 barrinhas (≡) (direita) */}
+          {/* Desktop Nav Links */}
+          <nav className="nav-menu">
+            <a href="#inicio" className="nav-link">Início</a>
+            <a href="#beneficios" className="nav-link">Benefícios</a>
+            <a href="#veiculos" className="nav-link">Veículos</a>
+            <a href="#planos" className="nav-link">Planos</a>
+            <a href="#como-funciona" className="nav-link">Como funciona</a>
+            <a href="#faq" className="nav-link">FAQ</a>
+            <a href="#contato" className="nav-link">Contato</a>
+          </nav>
+
+          {/* Action Buttons */}
           <div className="nav-actions">
+            <div className="desktop-actions">
+              <button 
+                className="btn btn-secondary btn-sm nav-login-btn"
+                onClick={onOpenAdmin}
+              >
+                Área Administrativa
+              </button>
+
+              <button
+                className="btn btn-secondary btn-sm nav-support-btn"
+                onClick={onOpenDriverSupport}
+              >
+                <Headphones size={16} />
+                Suporte
+              </button>
+              
+              <button 
+                className="btn btn-primary btn-sm nav-cta-btn"
+                onClick={onOpenProposal}
+              >
+                <span>Solicitar proposta</span>
+              </button>
+            </div>
+
+            {/* Mobile Toggler Button (Ícone dos 3 traços no estilo da imagem fornecida) */}
             <button 
               className="navbar-toggler" 
               type="button" 
@@ -92,10 +127,9 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
               aria-controls="navbarToggleExternalContent" 
               aria-expanded={mobileMenuOpen} 
               aria-label="Toggle navigation"
-              style={{ background: '#10B981', border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
-              <span className="navbar-toggler-icon" style={{ display: 'flex', alignItems: 'center' }}>
-                {mobileMenuOpen ? <X size={28} color="#FFFFFF" /> : <Menu size={28} color="#FFFFFF" />}
+              <span className="navbar-toggler-icon">
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </span>
             </button>
           </div>

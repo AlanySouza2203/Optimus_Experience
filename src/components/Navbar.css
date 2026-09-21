@@ -130,28 +130,41 @@
   letter-spacing: 0.15em;
 }
 
+/* Desktop Navigation Menu */
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-link {
+  color: #475569;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: var(--primary);
+}
+
+/* Desktop Action Buttons */
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 0.85rem;
 }
 
-.navbar-toggler {
-  display: flex !important;
-  background: #F1F5F9;
-  border: 1px solid #CBD5E1;
-  padding: 0.5rem 0.75rem;
-  border-radius: 10px;
-  color: #0F172A;
-  cursor: pointer;
-  transition: all 0.2s ease;
+.desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-.navbar-toggler:hover,
-.navbar-toggler:focus {
-  background: var(--primary-light);
-  border-color: var(--primary);
-  color: var(--primary);
+/* Mobile Toggler Button - hidden on desktop */
+.navbar-toggler {
+  display: none !important;
 }
 
 .navbar-toggler-icon {
@@ -216,24 +229,45 @@
   width: 100%;
 }
 
-/* Mobile Media Query: Dark theme matching Bootstrap navbar-dark bg-dark */
+/* Mobile Media Query (max-width: 1024px): Exibe EXCLUSIVAMENTE Logo + Botão ≡ no topo */
 @media screen and (max-width: 1024px) {
   .navbar {
     background: #0F172A !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 0.75rem 0 !important;
   }
   
   .navbar .brand-name {
     color: #FFFFFF !important;
   }
 
+  .nav-menu {
+    display: none !important;
+  }
+
+  .desktop-actions {
+    display: none !important;
+  }
+
   .navbar-toggler {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
     background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 12px !important;
     color: #FFFFFF !important;
+    cursor: pointer;
+    padding: 0 !important;
+    transition: all 0.2s ease;
   }
   
-  .navbar-toggler:hover {
-    background: rgba(255, 255, 255, 0.2) !important;
+  .navbar-toggler:hover,
+  .navbar-toggler:active {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
   }
 }
+
