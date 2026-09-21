@@ -18,12 +18,13 @@ const defaultVehicles = [
   { id: 13, brand: 'TOYOTA', name: 'Yaris Hatch', category: 'Hatch', priceWeekly: 765, status: 'Disponível' }
 ];
 
+const apiBaseUrl = import.meta.env.VITE_API_TARGET || 'http://localhost:3001';
+
 export default function ProposalModal({ isOpen, onClose, selectedVehicle, initialPlan = 'Semanal', onLeadSubmit }) {
   const [vehicleOptions, setVehicleOptions] = useState(defaultVehicles);
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
-    whatsapp: '',
     email: '',
     cpf: '',
     city: '',
@@ -41,7 +42,7 @@ export default function ProposalModal({ isOpen, onClose, selectedVehicle, initia
   useEffect(() => {
     const loadVehicleOptions = async () => {
       try {
-        const response = await fetch('/api/vehicles');
+        const response = await fetch(apiBaseUrl + '/api/vehicles');
         const data = await response.json().catch(() => []);
         const vehicleList = Array.isArray(data) && data.length > 0 ? data : defaultVehicles;
         const availableVehicles = vehicleList.filter((vehicle) => !vehicle.status || vehicle.status === 'Disponível');
@@ -141,6 +142,7 @@ export default function ProposalModal({ isOpen, onClose, selectedVehicle, initia
       cnhCategory: 'B',
       vehicleModel: selectedVehicleName || formData.vehicleModel,
       vehicle_id: selectedVehicleMatch.id,
+      vehicleId: selectedVehicleMatch.id,
       vehicleBrand: selectedVehicleMatch ? selectedVehicleMatch.brand : (formData.vehicleModel || '').split(' ')[0],
       vehicleYear: selectedVehicleMatch ? selectedVehicleMatch.year : '2024',
       vehicleCategory: selectedVehicleMatch ? selectedVehicleMatch.category : 'Econômico',
@@ -155,15 +157,32 @@ export default function ProposalModal({ isOpen, onClose, selectedVehicle, initia
       message: `CPF: ${formData.cpf} | CNH EAR: ${formData.hasEAR} | Valor estimado: ${vehicleValue}`
     };
 
-    fetch('/api/proposals', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Erro ao salvar proposta');
-        return res.json();
-      })
+    const sendToBackend = async () => {
+      let res;
+      try {
+        res = await fetch('/api/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (netErr) {
+        try {
+          res = await fetch('http://localhost:3001/api/proposals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (directErr) {
+          throw new Error('Não foi possível conectar ao servidor backend. Verifique se a API e o banco de dados estão em execução.');
+        }
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar proposta no banco de dados');
+      return data;
+    };
+
+    sendToBackend()
       .then((data) => {
         if (onLeadSubmit) {
           onLeadSubmit({
@@ -194,10 +213,10 @@ export default function ProposalModal({ isOpen, onClose, selectedVehicle, initia
         setLoading(false);
         setSubmitted(true);
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
         setLoading(false);
-        alert('Não foi possível salvar seu interesse. O cadastro não foi concluído. Tente novamente.');
+        alert(err.message || 'Não foi possível salvar seu interesse no banco de dados. Tente novamente.');
       });
   };
 
@@ -245,22 +264,6 @@ export default function ProposalModal({ isOpen, onClose, selectedVehicle, initia
                       </option>
                     ))}
                   </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">WhatsApp</label>
-                  <div className="input-icon-wrapper">
-                    <Phone className="input-icon" size={18} />
-                    <input
-                      type="tel"
-                      name="whatsapp"
-                      placeholder="(11) 99999-9999"
-                      value={formData.whatsapp}
-                      onChange={handleChange}
-                      className="form-input with-icon"
-                      required
-                    />
-                  </div>
                 </div>
 
                 <div className="form-group">

@@ -23,7 +23,6 @@ let fallbackUsers = [
   { id: 7, name: 'Carlos Alberto', email: 'admin@optimusexperience.com.br', password: 'admin123', cargo: 'Diretor Operacional', role: 'Administrador', status: 'Ativo', createdAt: '09/01/2024' }
 ];
 
-let fallbackClients = [];
 let fallbackPermissions = {};
 
 const calculateVehiclePriceBands = () => {
@@ -449,6 +448,8 @@ let fallbackClients = [
 ];
 let fallbackReservations = [];
 let fallbackPayments = [];
+let fallbackCashEntries = [];
+let fallbackContracts = [];
 let fallbackSupport = [];
 let fallbackNotifications = [
   { id: 1, driverId: 1, type: 'reserva', title: 'Reserva confirmada', message: 'Seu veículo foi reservado com sucesso.', isRead: false, createdAt: new Date().toISOString() },
@@ -728,12 +729,51 @@ async function initDb() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Older installations may have been created from a schema that stopped
+    // before the payments table. Create it before running its migrations so
+    // one missing, unrelated table does not disable all MySQL persistence.
+    await pool.query(`CREATE TABLE IF NOT EXISTS payments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      client_id INT NULL,
+      contract_id INT NULL,
+      reservation_id INT NULL,
+      driver_name VARCHAR(120) DEFAULT '',
+      driver_phone VARCHAR(40) DEFAULT '',
+      driver_email VARCHAR(120) DEFAULT '',
+      contract_number VARCHAR(80) DEFAULT '',
+      amount DECIMAL(10, 2) NOT NULL DEFAULT 0,
+      due_date DATE NOT NULL,
+      paid_at DATETIME NULL,
+      status VARCHAR(30) NOT NULL DEFAULT 'pendente',
+      method VARCHAR(40) NOT NULL DEFAULT 'pix',
+      external_reference VARCHAR(120) DEFAULT '',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+
+    await pool.query(`CREATE TABLE IF NOT EXISTS cash_entries (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      payment_id INT NULL UNIQUE,
+      entry_type VARCHAR(20) NOT NULL,
+      entry_date DATE NOT NULL,
+      description VARCHAR(255) NOT NULL,
+      category VARCHAR(80) DEFAULT '',
+      amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+      status VARCHAR(30) NOT NULL DEFAULT 'Pendente',
+      notes TEXT,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL
+    )`);
+
     await ensureColumn('clients', 'interested_id', 'INT NULL');
     await ensureColumn('clients', 'state', "VARCHAR(10) DEFAULT ''");
     await ensureColumn('drivers', 'client_id', 'INT NULL');
     await ensureColumn('reservations', 'client_id', 'INT NULL');
     await ensureColumn('payments', 'client_id', 'INT NULL');
     await ensureColumn('payments', 'contract_id', 'INT NULL');
+    await ensureColumn('cash_entries', 'payment_id', 'INT NULL');
+    await ensureColumn('contracts', 'client_name', "VARCHAR(120) DEFAULT ''");
+    await ensureColumn('contracts', 'vehicle_name', "VARCHAR(160) DEFAULT ''");
+    await ensureColumn('contracts', 'attachment_name', "VARCHAR(180) DEFAULT ''");
     await ensureColumn('proposals', 'vehicle_id', 'INT NULL');
     await ensureColumn('proposals', 'whatsapp', "VARCHAR(50) DEFAULT ''");
     await ensureColumn('proposals', 'updated_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP');
@@ -760,6 +800,7 @@ async function initDb() {
     await ensureColumn('support_requests', 'priority', "VARCHAR(30) DEFAULT 'Média'");
     await ensureColumn('support_requests', 'responsible', "VARCHAR(120) DEFAULT ''");
     await ensureColumn('support_requests', 'notes', 'TEXT DEFAULT ""');
+    await syncPaymentsToCashEntries();
     await ensureVehicleCatalogSeed();
     await ensurePlanCatalogSeed();
     await ensureClientCatalogSeed();
@@ -792,6 +833,27 @@ async function ensurePaymentColumns() {
       if (error.code !== 'ER_DUP_FIELDNAME') throw error;
     }
   }
+}
+
+// Pagamentos criados antes da integração não possuíam uma entrada vinculada
+// no fluxo de caixa. Esta rotina faz o preenchimento uma única vez por pagamento.
+async function syncPaymentsToCashEntries() {
+  await pool.query(`
+    INSERT INTO cash_entries (payment_id, entry_type, entry_date, description, category, amount, status, notes)
+    SELECT
+      pay.id,
+      'Entrada',
+      COALESCE(DATE(pay.paid_at), pay.due_date),
+      CONCAT('Pagamento recebido - ', COALESCE(NULLIF(pay.driver_name, ''), 'Motorista não informado'),
+        CASE WHEN COALESCE(pay.contract_number, '') = '' THEN '' ELSE CONCAT(' (', pay.contract_number, ')') END),
+      'Pagamento',
+      pay.amount,
+      CASE WHEN LOWER(pay.status) IN ('pago', 'paga', 'paid') THEN 'Pago' ELSE pay.status END,
+      CONCAT('Forma de pagamento: ', COALESCE(pay.method, 'Não informada'))
+    FROM payments pay
+    LEFT JOIN cash_entries cash ON cash.payment_id = pay.id
+    WHERE cash.id IS NULL
+  `);
 }
 
 function parseJsonArray(value) {
@@ -1490,10 +1552,18 @@ app.post(['/api/proposals', '/api/interessados'], async (req, res) => {
   } = req.body;
 
   const resolvedFullName = fullName || name;
-  const resolvedVehicleId = Number(vehicle_id || vehicleId || 0) || null;
+  let resolvedVehicleId = Number(vehicle_id || vehicleId || 0) || null;
 
-  if (!resolvedFullName || !phone || !email || !city || !planType) {
-    return res.status(400).json({ error: 'Campos obrigatórios ausentes.' });
+  if (!resolvedFullName || !phone || !email || !city) {
+    return res.status(400).json({ error: 'Campos obrigatórios ausentes: nome, telefone, e-mail e cidade.' });
+  }
+
+  if (!resolvedVehicleId && vehicleModel) {
+    const matched = fallbackVehicles.find(v => `${v.brand} ${v.name}`.toLowerCase() === String(vehicleModel).toLowerCase());
+    if (matched) resolvedVehicleId = matched.id;
+    else resolvedVehicleId = fallbackVehicles[0]?.id || 1;
+  } else if (!resolvedVehicleId) {
+    resolvedVehicleId = fallbackVehicles[0]?.id || 1;
   }
 
   const finalVehicleValue = Number(
@@ -1504,6 +1574,8 @@ app.post(['/api/proposals', '/api/interessados'], async (req, res) => {
     0
   );
 
+  const finalPlanType = planType || 'Semanal';
+
   const proposalObj = {
     fullName: resolvedFullName,
     phone,
@@ -1512,25 +1584,21 @@ app.post(['/api/proposals', '/api/interessados'], async (req, res) => {
     city,
     cnhCategory: cnhCategory || 'B',
     vehicleId: resolvedVehicleId,
-    vehicleModel,
-    vehicleBrand: vehicleBrand || (vehicleModel || '').split(' ')[0],
+    vehicleModel: vehicleModel || (fallbackVehicles.find(v => v.id === resolvedVehicleId) ? `${fallbackVehicles.find(v => v.id === resolvedVehicleId).brand} ${fallbackVehicles.find(v => v.id === resolvedVehicleId).name}` : 'CHEVROLET Onix Plus'),
+    vehicleBrand: vehicleBrand || (vehicleModel || '').split(' ')[0] || 'CHEVROLET',
     vehicleYear: vehicleYear || '2024',
     vehicleCategory: vehicleCategory || 'Econômico',
     vehiclePriceWeekly: finalVehicleValue,
     vehicleImage: vehicleImage || vehicle_image || '',
     vehicleStatus: vehicleStatus || 'Disponível',
     vehicleValue: finalVehicleValue,
-    planType,
+    planType: finalPlanType,
     appPlatform: appPlatform || 'Nenhuma',
     contactTime: contactTime || 'Qualquer Horário',
     message: message || '',
     status: 'Novo',
     createdAt: new Date()
   };
-
-  if (!resolvedVehicleId) {
-    return res.status(400).json({ error: 'Veículo de interesse é obrigatório.' });
-  }
 
   if (useFallback) {
     const nextId = fallbackProposals.length > 0 ? Math.max(...fallbackProposals.map(p => p.id)) + 1 : 1;
@@ -1540,43 +1608,62 @@ app.post(['/api/proposals', '/api/interessados'], async (req, res) => {
   }
 
   try {
-    const [vehicleRows] = await pool.query('SELECT id, brand, name, year, category, price_weekly, image, status FROM vehicles WHERE id = ? LIMIT 1', [resolvedVehicleId]);
-    if (vehicleRows.length === 0) {
-      return res.status(400).json({ error: 'Veículo não encontrado.' });
+    let vehicle = null;
+    try {
+      const [vehicleRows] = await pool.query('SELECT id, brand, name, year, category, price_weekly, image, status FROM vehicles WHERE id = ? LIMIT 1', [resolvedVehicleId]);
+      if (vehicleRows.length > 0) {
+        vehicle = vehicleRows[0];
+      }
+    } catch (e) {
+      console.warn('⚠ Could not query vehicles from DB, using fallback catalog:', e.message);
     }
 
-    const vehicle = vehicleRows[0];
-    const [result] = await pool.query(
-      `INSERT INTO proposals (full_name, phone, whatsapp, email, city, cnh_category, vehicle_id, vehicle_model, vehicle_brand, vehicle_year, vehicle_category, vehicle_price_weekly, vehicle_image, vehicle_status, plan_type, app_platform, contact_time, message, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        resolvedFullName,
-        phone,
-        whatsapp || phone,
-        email,
-        city,
-        cnhCategory || 'B',
-        resolvedVehicleId,
-        vehicleModel || `${vehicle.brand} ${vehicle.name}`,
-        vehicleBrand || vehicle.brand,
-        vehicleYear || vehicle.year || '2024',
-        vehicleCategory || vehicle.category || 'Econômico',
-        finalVehicleValue || Number(vehicle.price_weekly || 0),
-        vehicleImage || vehicle.image || '',
-        vehicleStatus || vehicle.status || 'Disponível',
-        planType,
-        appPlatform || 'Nenhuma',
-        contactTime || 'Qualquer Horário',
-        message || '',
-        'Novo'
-      ]
-    );
+    if (!vehicle) {
+      vehicle = fallbackVehicles.find(v => v.id === resolvedVehicleId) || fallbackVehicles[0];
+    }
 
-    proposalObj.id = result.insertId;
+    try {
+      const [result] = await pool.query(
+        `INSERT INTO proposals (full_name, phone, whatsapp, email, city, cnh_category, vehicle_id, vehicle_model, vehicle_brand, vehicle_year, vehicle_category, vehicle_price_weekly, vehicle_image, vehicle_status, plan_type, app_platform, contact_time, message, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          resolvedFullName,
+          phone,
+          whatsapp || phone,
+          email,
+          city,
+          cnhCategory || 'B',
+          resolvedVehicleId,
+          proposalObj.vehicleModel || `${vehicle.brand} ${vehicle.name}`,
+          proposalObj.vehicleBrand || vehicle.brand,
+          vehicleYear || vehicle.year || '2024',
+          vehicleCategory || vehicle.category || 'Econômico',
+          finalVehicleValue || Number(vehicle.price_weekly || vehicle.priceWeekly || 0),
+          vehicleImage || vehicle.image || '',
+          vehicleStatus || vehicle.status || 'Disponível',
+          finalPlanType,
+          appPlatform || 'Nenhuma',
+          contactTime || 'Qualquer Horário',
+          message || '',
+          'Novo'
+        ]
+      );
+      proposalObj.id = result.insertId;
+    } catch (dbErr) {
+      console.warn('⚠ Could not insert proposal to DB, storing in fallback:', dbErr.message);
+      useFallback = true;
+      const nextId = fallbackProposals.length > 0 ? Math.max(...fallbackProposals.map(p => p.id)) + 1 : 1;
+      proposalObj.id = nextId;
+      fallbackProposals.unshift(proposalObj);
+    }
+
     proposalObj.vehicleId = resolvedVehicleId;
     return res.status(201).json({ success: true, proposal: proposalObj });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    const nextId = fallbackProposals.length > 0 ? Math.max(...fallbackProposals.map(p => p.id)) + 1 : 1;
+    proposalObj.id = nextId;
+    fallbackProposals.unshift(proposalObj);
+    return res.status(201).json({ success: true, proposal: proposalObj });
   }
 });
 
@@ -2024,7 +2111,11 @@ app.get('/api/maintenances', async (req, res) => {
 });
 
 app.post('/api/maintenances', async (req, res) => {
-  const { vehicleId, type = 'Preventiva', service, date, status = 'Aberta', notes = '' } = req.body;
+  let { vehicleId, type = 'Preventiva', service, date, status = 'Aberta', notes = '' } = req.body;
+  if (!vehicleId && req.body.vehicleName) {
+    const [vehicles] = await pool.query(`SELECT id FROM vehicles WHERE LOWER(CONCAT(brand, ' ', name)) = LOWER(?) LIMIT 1`, [String(req.body.vehicleName).trim()]);
+    vehicleId = vehicles[0]?.id;
+  }
   if (!vehicleId || !service || !date) {
     return res.status(400).json({ error: 'Veículo, serviço e data são obrigatórios.' });
   }
@@ -2053,9 +2144,7 @@ app.post('/api/maintenances', async (req, res) => {
 
 const adminResources = {
   rentals: { table: 'rentals', fields: ['client_id', 'driver_id', 'vehicle_id', 'plan', 'start_date', 'return_date', 'total_amount', 'status', 'notes'] },
-  contracts: { table: 'contracts', fields: ['contract_number', 'client_id', 'driver_id', 'vehicle_id', 'plan', 'total_amount', 'deposit_amount', 'start_date', 'end_date', 'status'] },
   inspections: { table: 'inspections', fields: ['inspection_type', 'contract_id', 'client_name', 'driver_name', 'inspector', 'inspection_date', 'inspection_time', 'status'] },
-  cashEntries: { table: 'cash_entries', fields: ['entry_type', 'entry_date', 'description', 'category', 'amount', 'status', 'notes'] },
   fines: { table: 'fines', fields: ['notice', 'vehicle_id', 'fine_date', 'fine_type', 'description', 'amount', 'due_date', 'status', 'notes'] },
   incidents: { table: 'incidents', fields: ['protocol', 'vehicle_id', 'driver_name', 'incident_date', 'incident_type', 'description', 'location', 'responsibility', 'total_cost', 'status', 'notes'] }
 };
@@ -2073,6 +2162,11 @@ Object.entries(adminResources).forEach(([resource, { table, fields }]) => {
 
   app.post(`/api/admin/${resource}`, async (req, res) => {
     if (useFallback) return res.status(201).json({ success: true });
+    if ((resource === 'fines' || resource === 'incidents') && req.body.vehicleName) {
+      const [vehicles] = await pool.query(`SELECT id FROM vehicles WHERE LOWER(CONCAT(brand, ' ', name)) = LOWER(?) LIMIT 1`, [String(req.body.vehicleName).trim()]);
+      if (!vehicles.length) return res.status(400).json({ error: 'Veículo não encontrado. Digite o modelo exatamente como cadastrado.' });
+      req.body.vehicle_id = vehicles[0].id;
+    }
     const values = fields.map((field) => req.body[field] ?? null);
     try {
       const [result] = await pool.query(
@@ -2086,6 +2180,128 @@ Object.entries(adminResources).forEach(([resource, { table, fields }]) => {
   });
 });
 
+app.get('/api/contracts', async (req, res) => {
+  if (useFallback) return res.json(fallbackContracts);
+  try {
+    const [rows] = await pool.query('SELECT * FROM contracts ORDER BY created_at DESC, id DESC');
+    return res.json(rows.map((row) => ({
+      id: row.id,
+      number: row.contract_number,
+      client: row.client_name || '',
+      vehicle: row.vehicle_name || '',
+      plan: row.plan || '',
+      value: Number(row.total_amount || 0),
+      deposit: Number(row.deposit_amount || 0),
+      startDate: row.start_date,
+      endDate: row.end_date,
+      status: row.status,
+      file: row.attachment_name || ''
+    })));
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/contracts', async (req, res) => {
+  const { number, client, vehicle, plan = '', value, deposit = 0, startDate, endDate, status = 'Em elaboração', fileName = '' } = req.body;
+  if (!number?.trim() || !client?.trim() || !vehicle?.trim() || !startDate || !endDate || !Number.isFinite(Number(value))) {
+    return res.status(400).json({ error: 'Número, cliente, veículo, valor e vigência são obrigatórios.' });
+  }
+  const contract = { id: Date.now(), number: number.trim(), client: client.trim(), vehicle: vehicle.trim(), plan, value: Number(value), deposit: Number(deposit) || 0, startDate, endDate, status, file: fileName };
+  if (useFallback) {
+    fallbackContracts.unshift(contract);
+    return res.status(201).json({ success: true, contract });
+  }
+  try {
+    const [result] = await pool.query(
+      'INSERT INTO contracts (contract_number, client_name, vehicle_name, plan, total_amount, deposit_amount, start_date, end_date, status, attachment_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [contract.number, contract.client, contract.vehicle, plan, contract.value, contract.deposit, startDate, endDate, status, fileName]
+    );
+    return res.status(201).json({ success: true, contract: { ...contract, id: result.insertId } });
+  } catch (err) {
+    return res.status(err.code === 'ER_DUP_ENTRY' ? 409 : 500).json({ error: err.code === 'ER_DUP_ENTRY' ? 'Já existe um contrato com esse número.' : err.message });
+  }
+});
+
+app.delete('/api/contracts/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Contrato inválido.' });
+  if (useFallback) {
+    const before = fallbackContracts.length;
+    fallbackContracts = fallbackContracts.filter((contract) => contract.id !== id);
+    return res.status(before === fallbackContracts.length ? 404 : 204).end();
+  }
+  try {
+    const [result] = await pool.query('DELETE FROM contracts WHERE id = ?', [id]);
+    return res.status(result.affectedRows ? 204 : 404).end();
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+const isPaymentCategory = (category) => String(category || '').trim().toLocaleLowerCase('pt-BR') === 'pagamento';
+const isPaidStatus = (status) => ['pago', 'paga', 'paid'].includes(String(status || '').trim().toLocaleLowerCase('pt-BR'));
+
+app.get('/api/admin/cashEntries', async (req, res) => {
+  if (useFallback) return res.json(fallbackCashEntries);
+  try {
+    await syncPaymentsToCashEntries();
+    const [rows] = await pool.query('SELECT * FROM cash_entries ORDER BY entry_date DESC, id DESC');
+    return res.json(rows);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/cashEntries', async (req, res) => {
+  const { entry_type, entry_date, description, category = '', amount, status = 'Pendente', notes = '', driver = '', contract = '', method = 'Pix' } = req.body;
+  const numericAmount = Number(amount);
+  const paymentEntry = entry_type === 'Entrada' && isPaymentCategory(category);
+
+  if (!entry_type || !entry_date || !description || !Number.isFinite(numericAmount) || numericAmount <= 0) {
+    return res.status(400).json({ error: 'Tipo, data, descrição e valor maior que zero são obrigatórios.' });
+  }
+  if (paymentEntry && !driver.trim()) {
+    return res.status(400).json({ error: 'Informe o motorista para registrar uma movimentação de pagamento.' });
+  }
+
+  if (useFallback) {
+    const payment = paymentEntry ? {
+      id: Date.now(), driver, contract, amount: numericAmount, dueDate: entry_date,
+      paidAt: isPaidStatus(status) ? new Date(`${entry_date}T12:00:00`).toISOString() : null,
+      status, method, externalReference: ''
+    } : null;
+    if (payment) fallbackPayments.unshift(payment);
+    const cashEntry = { id: Date.now() + (payment ? 1 : 0), payment_id: payment?.id || null, entry_type, entry_date, description, category, amount: numericAmount, status, notes };
+    fallbackCashEntries.unshift(cashEntry);
+    return res.status(201).json({ success: true, cashEntry, payment });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    let paymentId = null;
+    if (paymentEntry) {
+      const [paymentResult] = await connection.query(
+        'INSERT INTO payments (driver_name, contract_number, amount, due_date, paid_at, status, method) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [driver.trim(), contract.trim(), numericAmount, entry_date, isPaidStatus(status) ? new Date(`${entry_date}T12:00:00`) : null, status, method]
+      );
+      paymentId = paymentResult.insertId;
+    }
+    const [cashResult] = await connection.query(
+      'INSERT INTO cash_entries (payment_id, entry_type, entry_date, description, category, amount, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [paymentId, entry_type, entry_date, description.trim(), category, numericAmount, status, notes]
+    );
+    await connection.commit();
+    return res.status(201).json({ success: true, id: cashResult.insertId, paymentId });
+  } catch (err) {
+    await connection.rollback();
+    return res.status(500).json({ error: err.message });
+  } finally {
+    connection.release();
+  }
+});
+
 app.post('/api/payments', async (req, res) => {
   const { reservationId, driver = '', phone = '', email = '', contract = '', amount, dueDate, status = 'Pago', method = 'Pix', externalReference = '' } = req.body;
   const paid = ['pago', 'paga', 'paid'].includes(String(status).toLowerCase());
@@ -2096,6 +2312,7 @@ app.post('/api/payments', async (req, res) => {
   if (useFallback) {
     const payment = { id: Date.now(), reservationId: reservationId ? Number(reservationId) : null, driver, driverPhone: phone, driverEmail: email, contract, amount: Number(amount), dueDate, paidAt: paid ? new Date().toISOString() : null, status, method, externalReference };
     fallbackPayments.unshift(payment);
+    fallbackCashEntries.unshift({ id: Date.now() + 1, payment_id: payment.id, entry_type: 'Entrada', entry_date: dueDate, description: `Pagamento recebido - ${driver}${contract ? ` (${contract})` : ''}`, category: 'Pagamento', amount: Number(amount), status: paid ? 'Pago' : status, notes: `Forma de pagamento: ${method}` });
     return res.status(201).json({ success: true, payment });
   }
 
@@ -2107,6 +2324,10 @@ app.post('/api/payments', async (req, res) => {
     const [result] = await connection.query(
       'INSERT INTO payments (reservation_id, driver_name, driver_phone, driver_email, contract_number, amount, due_date, paid_at, status, method, external_reference) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [reservationId || null, driver, phone, email, contract, Number(amount), dueDate, paid ? new Date() : null, status, method, externalReference]
+    );
+    await connection.query(
+      'INSERT INTO cash_entries (payment_id, entry_type, entry_date, description, category, amount, status, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [result.insertId, 'Entrada', dueDate, `Pagamento recebido - ${driver}${contract ? ` (${contract})` : ''}`, 'Pagamento', Number(amount), paid ? 'Pago' : status, `Forma de pagamento: ${method}`]
     );
     if (paid && reservationId) {
       await connection.query("UPDATE reservations SET status = 'Confirmada', deposit_paid = TRUE WHERE id = ?", [reservationId]);
@@ -2430,8 +2651,3 @@ function startServer(port) {
 }
 
 startServer(Number(process.env.PORT || 3001));
-
-
-
-
-

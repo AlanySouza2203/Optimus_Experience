@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Lock, ShieldCheck, X, UserCheck, Car, Plus, Trash2, Edit3, 
   Check, FileText, Database, TrendingUp, LogOut, RefreshCw, Eye,
-  Search, Bell, ArrowUpRight, ArrowDownRight, AlertTriangle, Download, MoreVertical, Upload, Camera, ClipboardList, CalendarDays, Clock, Inbox, BadgeAlert, CircleDollarSign, CheckCircle2, Headphones, Wrench, HelpCircle
+  Search, Bell, Menu, ArrowUpRight, ArrowDownRight, AlertTriangle, Download, MoreVertical, Upload, Camera, ClipboardList, CalendarDays, Clock, Inbox, BadgeAlert, CircleDollarSign, CheckCircle2, Headphones, Wrench, HelpCircle
 } from 'lucide-react';
 import {
   filterByExactValue,
@@ -31,6 +31,9 @@ import {
   createVehicleForm
 } from './adminModalFormDefaults';
 import './AdminModal.css';
+
+const apiBaseUrl = import.meta.env.VITE_API_TARGET || 'http://localhost:3001';
+const apiFetch = (path, options) => fetch(apiBaseUrl + path, options);
 import SupportTab from './SupportTab';
 import NotificationsTab from './NotificationsTab';
 import SettingsTab from './SettingsTab';
@@ -204,6 +207,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarMenuOpen, setSidebarMenuOpen] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState([]);
   const [dbStatus, setDbStatus] = useState('Verificando...');
   const [currentUser, setCurrentUser] = useState(null);
@@ -304,6 +308,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const [contractFormOpen, setContractFormOpen] = useState(false);
   const [contractForm, setContractForm] = useState(createContractForm);
   const [contracts, setContracts] = useState([]);
+  const [contractMenu, setContractMenu] = useState(null);
   const [cashFormOpen, setCashFormOpen] = useState(false);
   const [cashForm, setCashForm] = useState(createCashForm);
   const [cashEntries, setCashEntries] = useState([]);
@@ -416,7 +421,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
 
   const checkConnectionAndLoadData = async () => {
     try {
-      const res = await fetch('/api/admin/overview');
+      const res = await apiFetch('/api/admin/overview');
       if (res.ok) {
         setDashboardSummary(await res.json());
       } else {
@@ -427,7 +432,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/vehicles');
+      const res = await apiFetch('/api/vehicles');
       if (res.ok) {
         const data = await res.json();
         const shouldUseOriginalCatalog = !Array.isArray(data) || data.length === 0 || !data.some((item) => item.name === 'Onix Plus' && item.brand === 'CHEVROLET');
@@ -443,7 +448,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/users');
+      const res = await apiFetch('/api/users');
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
@@ -456,7 +461,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     let driversData = [];
 
     try {
-      const res = await fetch('/api/clients');
+      const res = await apiFetch('/api/clients');
       if (res.ok) {
         clientsData = await res.json();
       }
@@ -465,7 +470,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/drivers');
+      const res = await apiFetch('/api/drivers');
       if (res.ok) {
         driversData = await res.json();
       }
@@ -477,7 +482,17 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     setDrivers(driversData);
 
     try {
-      const res = await fetch('/api/proposals');
+      const res = await apiFetch('/api/contracts');
+      if (res.ok) {
+        const data = await res.json();
+        setContracts(data.map((contract) => ({ ...contract, startDate: contract.startDate ? formatDate(String(contract.startDate).slice(0, 10)) : '—', endDate: contract.endDate ? formatDate(String(contract.endDate).slice(0, 10)) : '—' })));
+      }
+    } catch (e) {
+      console.warn('Não foi possível carregar os contratos');
+    }
+
+    try {
+      const res = await apiFetch('/api/proposals');
       if (res.ok) {
         const data = await res.json();
         setProposals(data);
@@ -500,7 +515,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/reservations');
+      const res = await apiFetch('/api/reservations');
       if (res.ok) {
         const data = await res.json();
         setReservations(data.map((reservation) => ({
@@ -519,7 +534,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/payments');
+      const res = await apiFetch('/api/payments');
       if (res.ok) {
         const data = await res.json();
         setPayments(data.map((payment) => ({
@@ -530,7 +545,9 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
           contract: payment.contract || (payment.reservationId ? `Reserva #${payment.reservationId}` : '—'),
           value: Number(payment.amount || 0),
           method: payment.method || '—',
+          entryDate: payment.paidAt || payment.dueDate || '',
           date: payment.paidAt || payment.dueDate ? new Date(payment.paidAt || payment.dueDate).toLocaleDateString('pt-BR') : '—',
+          status: payment.status || 'Pendente',
           receipt: Boolean(payment.externalReference),
           receiptName: payment.externalReference || ''
         })));
@@ -540,7 +557,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/maintenances');
+      const res = await apiFetch('/api/maintenances');
       if (res.ok) {
         const data = await res.json();
         setMaintenances(data.map((maintenance) => ({
@@ -555,18 +572,20 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/admin/cashEntries');
+      const res = await apiFetch('/api/admin/cashEntries');
       if (res.ok) {
         const data = await res.json();
         setCashEntries(data.map((entry) => ({
           id: entry.id,
           type: entry.entry_type || entry.type || 'Entrada',
           date: entry.entry_date ? formatDate(String(entry.entry_date).slice(0, 10)) : '—',
+          entryDate: entry.entry_date ? String(entry.entry_date).slice(0, 10) : '',
           description: entry.description || '',
           category: entry.category || '',
           value: Number(entry.amount || entry.value || 0),
           status: entry.status || 'Pendente',
-          notes: entry.notes || ''
+          notes: entry.notes || '',
+          paymentId: entry.payment_id || entry.paymentId || null
         })));
       }
     } catch (e) {
@@ -574,7 +593,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/collections');
+      const res = await apiFetch('/api/collections');
       if (res.ok) {
         const data = await res.json();
         setCollections(data.map((collection) => ({
@@ -587,7 +606,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
 
     try {
-      const res = await fetch('/api/support');
+      const res = await apiFetch('/api/support');
       if (res.ok) {
         const data = await res.json();
         setSupportRequests(data.map((request) => ({
@@ -624,7 +643,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     setAuthError('');
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(adminAuth)
@@ -659,7 +678,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
 
   const loadPermissions = async () => {
     try {
-      const response = await fetch('/api/permissions');
+      const response = await apiFetch('/api/permissions');
       if (!response.ok) return;
       const savedPermissions = await response.json();
       if (savedPermissions && Object.keys(savedPermissions).length) {
@@ -669,7 +688,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   };
 
   const updatePermissions = async (nextPermissions) => {
-    const response = await fetch('/api/permissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: nextPermissions }) });
+    const response = await apiFetch('/api/permissions', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: nextPermissions }) });
     if (!response.ok) throw new Error('Erro ao salvar permissões');
     const data = await response.json();
     setPermissionsByProfile(data.permissions || nextPermissions);
@@ -715,7 +734,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     };
 
     try {
-      const res = await fetch('/api/users', {
+      const res = await apiFetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -737,7 +756,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleUserStatusToggle = async (userId, currentStatus) => {
     const newStatus = currentStatus === 'Ativo' ? 'Inativo' : currentStatus === 'Inativo' ? 'Bloqueado' : 'Ativo';
     try {
-      await fetch(`/api/users/${userId}`, {
+      await apiFetch(`/api/users/${userId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -750,7 +769,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleUserDelete = async (userId) => {
     if (!window.confirm('Tem certeza que deseja excluir este usuário?')) return;
     try {
-      await fetch(`/api/users/${userId}`, { method: 'DELETE' });
+      await apiFetch(`/api/users/${userId}`, { method: 'DELETE' });
     } catch (e) {}
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     setOpenUserMenu(null);
@@ -800,7 +819,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     };
 
     try {
-      const res = await fetch('/api/drivers/register', {
+      const res = await apiFetch('/api/drivers/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -836,7 +855,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
 
   const handleDriverStatusChange = async (driverId, newStatus) => {
     try {
-      await fetch(`/api/drivers/${driverId}`, {
+      await apiFetch(`/api/drivers/${driverId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -849,7 +868,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleDriverDelete = async (driverId) => {
     if (!window.confirm('Tem certeza que deseja excluir este motorista?')) return;
     try {
-      await fetch(`/api/drivers/${driverId}`, { method: 'DELETE' });
+      await apiFetch(`/api/drivers/${driverId}`, { method: 'DELETE' });
     } catch (e) {}
     setDrivers((prev) => prev.filter((d) => d.id !== driverId));
     setOpenDriverMenu(null);
@@ -916,7 +935,6 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     setRentals((current) => current.map((rental) => rental.id === id ? { ...rental, status } : rental));
     setOpenRentalMenu(null);
   };
-  const visibleCollections = filterByExactValue(collections, collectionFilter, 'Todos os status', (collection) => collection.status);
   const handleCollectionUpload = async (event) => {
     event.preventDefault();
     const file = collectionUpload.file;
@@ -927,7 +945,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
       reader.readAsDataURL(file);
     }) : '';
     try {
-      const response = await fetch('/api/collections', {
+      const response = await apiFetch('/api/collections', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -950,7 +968,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     }
   };
   const updateCollection = async (id, changes) => {
-    const response = await fetch(`/api/collections/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
+    const response = await apiFetch(`/api/collections/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes) });
     if (!response.ok) throw new Error('Não foi possível atualizar a cobrança.');
     await checkConnectionAndLoadData();
   };
@@ -993,7 +1011,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     event.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch('/api/clients', {
+      const res = await apiFetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(clientForm)
@@ -1018,7 +1036,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleClientDelete = async (clientId) => {
     if (!window.confirm('Tem certeza que deseja excluir este cliente?')) return;
     try {
-      await fetch(`/api/clients/${clientId}`, { method: 'DELETE' });
+      await apiFetch(`/api/clients/${clientId}`, { method: 'DELETE' });
     } catch (e) {}
     setClients((prev) => prev.filter((c) => c.id !== clientId));
     setOpenClientMenu(null);
@@ -1039,7 +1057,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleViewClientHistory = async (client) => {
     setOpenClientMenu(null);
     try {
-      const res = await fetch(`/api/clients/${client.id}/history`);
+      const res = await apiFetch(`/api/clients/${client.id}/history`);
       if (res.ok) {
         const data = await res.json();
         setSelectedClientHistory(data);
@@ -1096,11 +1114,29 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     'Todos os status',
     (contract) => contract.status
   );
-  const handleContractSubmit = (event) => {
+  const handleContractSubmit = async (event) => {
     event.preventDefault();
-    setContracts((current) => [{ id: Date.now(), ...contractForm, value: Number(contractForm.value) || 0, startDate: formatDate(contractForm.startDate), endDate: formatDate(contractForm.endDate) }, ...current]);
-    setContractForm(createContractForm(`CT-2024-${String(contracts.length + 2).padStart(3, '0')}`));
-    setContractFormOpen(false);
+    try {
+      const response = await apiFetch('/api/contracts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ number: contractForm.number, client: contractForm.client, vehicle: contractForm.vehicle, plan: contractForm.plan, value: Number(contractForm.value), deposit: Number(contractForm.deposit) || 0, startDate: contractForm.startDate, endDate: contractForm.endDate, status: contractForm.status, fileName: contractForm.file?.name || '' }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o contrato.');
+      await checkConnectionAndLoadData();
+      setContractForm(createContractForm(`CT-2024-${String(contracts.length + 2).padStart(3, '0')}`));
+      setContractFormOpen(false);
+    } catch (error) {
+      alert(error.message || 'Erro ao salvar o contrato.');
+    }
+  };
+  const handleContractDelete = async (contract) => {
+    if (!window.confirm(`Excluir o contrato ${contract.number}?`)) return;
+    try {
+      const response = await apiFetch(`/api/contracts/${contract.id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Não foi possível excluir o contrato.');
+      setContracts((current) => current.filter((item) => item.id !== contract.id));
+      setContractMenu(null);
+    } catch (error) {
+      alert(error.message || 'Erro ao excluir o contrato.');
+    }
   };
   const cashIn = cashEntries.filter((item) => item.type === 'Entrada').reduce((total, item) => total + item.value, 0);
   const cashOut = cashEntries.filter((item) => item.type === 'Saída').reduce((total, item) => total + item.value, 0);
@@ -1108,7 +1144,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     event.preventDefault();
     const amount = Number(cashForm.value) || 0;
     try {
-      const response = await fetch('/api/admin/cashEntries', {
+      const response = await apiFetch('/api/admin/cashEntries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1118,7 +1154,10 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
           category: cashForm.category,
           amount,
           status: cashForm.status,
-          notes: cashForm.notes
+          notes: cashForm.notes,
+          driver: cashForm.driver || '',
+          contract: cashForm.contract || '',
+          method: cashForm.method || 'Pix'
         })
       });
       if (!response.ok) throw new Error('Não foi possível salvar a movimentação.');
@@ -1134,7 +1173,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     event.preventDefault();
     const registeredDriver = drivers.find((driver) => String(driver.name || driver.fullName || '').trim().toLowerCase() === String(paymentForm.driver || '').trim().toLowerCase());
     try {
-      const response = await fetch('/api/payments', {
+      const response = await apiFetch('/api/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1162,11 +1201,11 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     event.preventDefault();
     const vehicle = vehicles.find((item) => String(item.id) === maintenanceForm.vehicle);
     try {
-      const response = await fetch('/api/maintenances', {
+      const response = await apiFetch('/api/maintenances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          vehicleId: maintenanceForm.vehicle,
+          vehicleName: maintenanceForm.vehicle,
           type: maintenanceForm.type,
           service: maintenanceForm.service,
           date: maintenanceForm.date,
@@ -1294,7 +1333,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   };
   const handleSupportStatusChange = async (requestId, nextStatus) => {
     try {
-      const response = await fetch(`/api/support/${requestId}`, {
+      const response = await apiFetch(`/api/support/${requestId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
@@ -1334,7 +1373,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
       };
 
       try {
-        const res = await fetch('/api/maintenances', {
+        const res = await apiFetch('/api/maintenances', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(maintenanceEntry)
@@ -1359,7 +1398,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
       );
 
       try {
-        await fetch(`/api/support/${request.id}`, {
+        await apiFetch(`/api/support/${request.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'Em atendimento' })
@@ -1486,13 +1525,13 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     try {
       let res;
       if (editingVehicle) {
-        res = await fetch(`/api/vehicles/${editingVehicle.id}`, {
+        res = await apiFetch(`/api/vehicles/${editingVehicle.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
       } else {
-        res = await fetch('/api/vehicles', {
+        res = await apiFetch('/api/vehicles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -1515,7 +1554,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleVehicleDelete = async (id) => {
     if (!window.confirm('Tem certeza que deseja excluir este veículo?')) return;
     try {
-      const res = await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/vehicles/${id}`, { method: 'DELETE' });
       if (res.ok) {
         checkConnectionAndLoadData();
       } else {
@@ -1530,7 +1569,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
   const handleProposalStatus = async (id, newStatus) => {
     try {
       const nextStatus = normalizeProposalStatus(newStatus);
-      const res = await fetch(`/api/proposals/${id}`, {
+      const res = await apiFetch(`/api/proposals/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus })
@@ -1582,25 +1621,57 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     { name: 'Ricardo Mendes', email: 'atendente@drivefleet.com.br', password: 'atendente123', role: 'Atendente' }
   ];
 
-  // Dashboard Stats calculations
-  const totalVehiclesCount = dashboardSummary?.totalVehicles ?? vehicles.length;
-  const rentedVehiclesCount = dashboardSummary?.rentedVehicles ?? vehicles.filter((vehicle) => vehicle.status === 'Alugado').length;
-  const totalProposalsCount = proposals.length;
-  const availableVehiclesCount = dashboardSummary?.availableVehicles ?? vehicles.filter((vehicle) => vehicle.status === 'Disponível').length;
-  const maintenanceVehiclesCount = dashboardSummary?.maintenanceVehicles ?? vehicles.filter((vehicle) => vehicle.status === 'Em manutenção').length;
-  const reservedVehiclesCount = dashboardSummary?.reservedVehicles ?? vehicles.filter((vehicle) => vehicle.status === 'Reservado').length;
-  const occupancyRate = totalVehiclesCount ? Math.round((rentedVehiclesCount / totalVehiclesCount) * 100) : 0;
-  const fleetStatus = [
-    { label: 'Em locação', value: rentedVehiclesCount, color: '#35bf8b' },
-    { label: 'Disponível', value: availableVehiclesCount, color: '#4e7df3' },
-    { label: 'Manutenção', value: maintenanceVehiclesCount, color: '#f5a623' },
-    { label: 'Reservado', value: reservedVehiclesCount, color: '#8b5cf6' }
-  ];
-  const locallyCalculatedRevenue = cashIn + payments.reduce((total, payment) => total + payment.value, 0) + rentals.filter((rental) => rental.status !== 'Cancelada').reduce((total, rental) => total + rental.value, 0);
-  const monthlyRevenue = dashboardSummary?.monthlyRevenue ?? locallyCalculatedRevenue;
-  const monthlyExpenses = cashOut + maintenances.reduce((total, maintenance) => total + (Number(maintenance.cost) || 0), 0) + fines.reduce((total, fine) => total + fine.value, 0);
+// Indicadores do dashboard: calculados exclusivamente com dados carregados do banco.
+  const toMetricDate = (value) => {
+    if (typeof value === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      const [day, month, year] = value.split('/');
+      return new Date(`${year}-${month}-${day}T12:00:00`);
+    }
+    return new Date(value);
+  };
+  const todayForMetrics = new Date();
+  const isCurrentMonth = (value) => {
+    const date = toMetricDate(value);
+    return !Number.isNaN(date.getTime()) && date.getFullYear() === todayForMetrics.getFullYear() && date.getMonth() === todayForMetrics.getMonth();
+  };
+  const normalizeMetricText = (value) => String(value || '').trim().toLocaleLowerCase('pt-BR');
+  // Indicadores financeiros do dashboard: entradas do Fluxo de Caixa e pagamentos recebidos no mês atual.
+  const monthlyCashEntries = cashEntries.filter((entry) => isCurrentMonth(entry.entryDate || entry.date));
+  const monthlyCashIncome = monthlyCashEntries
+    .filter((entry) => normalizeMetricText(entry.type) === 'entrada')
+    .reduce((total, entry) => total + Number(entry.value || 0), 0);
+  const monthlyPayments = payments
+    .filter((payment) => isCurrentMonth(payment.entryDate || payment.date) && ['pago', 'paga', 'paid'].includes(normalizeMetricText(payment.status)))
+    .reduce((total, payment) => total + Number(payment.value || 0), 0);
+  const monthlyRevenue = monthlyCashIncome + monthlyPayments;
+  const monthlyExpenses = monthlyCashEntries
+    .filter((entry) => normalizeMetricText(entry.type) === 'saída')
+    .reduce((total, entry) => total + Number(entry.value || 0), 0);
   const monthlyProfit = monthlyRevenue - monthlyExpenses;
-  const chartMonths = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label, index) => ({ label, revenue: index === 6 ? 0 : (rentals[index]?.value || payments[index]?.value || 0), expense: index === 6 ? 0 : (cashEntries.filter((entry) => entry.type === 'Saída')[index]?.value || maintenances[index]?.cost || 0) }));
+  const monthlyBalance = monthlyProfit;
+  const totalVehiclesCount = vehicles.length;
+  const paidPaymentVehicles = new Set(payments.filter((payment) => ['pago', 'paga', 'paid'].includes(normalizeMetricText(payment.status)) && payment.vehicle && payment.vehicle !== '—').map((payment) => normalizeMetricText(payment.vehicle)));
+  const rentedVehiclesCount = vehicles.filter((vehicle) => paidPaymentVehicles.has(normalizeMetricText(`${vehicle.brand} ${vehicle.name}`))).length;
+  const maintenanceVehiclesCount = maintenances.filter((maintenance) => normalizeMetricText(maintenance.status) === 'em execução').length;
+  const reservedVehiclesCount = reservations.length;
+  const contractsCount = contracts.length;
+  const pendingCollectionsCount = collections.filter((collection) => normalizeMetricText(collection.status) === 'pendente').length;
+  const overdueCollectionsCount = collections.filter((collection) => normalizeMetricText(collection.status) === 'vencida').length;
+  const availableVehiclesCount = 0;
+  const occupancyRate = 0;
+  const fleetStatus = [
+    { label: 'Já alugados', value: rentedVehiclesCount, color: '#35bf8b' },
+    { label: 'Em manutenção', value: maintenanceVehiclesCount, color: '#f5a623' },
+    { label: 'Reservas', value: reservedVehiclesCount, color: '#8b5cf6' }
+  ];
+  const chartRevenueEntries = dashboardCashEntries.filter((entry) => normalizeMetricText(entry.type) === 'entrada');
+  const chartExpenseEntries = dashboardCashEntries.filter((entry) => normalizeMetricText(entry.type) === 'saída');
+  const chartMaximumValue = Math.max(1, ...chartRevenueEntries.map((entry) => Number(entry.value) || 0), ...chartExpenseEntries.map((entry) => Number(entry.value) || 0));
+  const chartMonths = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map((label, index) => ({
+    label,
+    revenue: index === 6 ? 0 : ((Number(chartRevenueEntries[index]?.value) || 0) / chartMaximumValue) * 100,
+    expense: index === 6 ? 0 : ((Number(chartExpenseEntries[index]?.value) || 0) / chartMaximumValue) * 100
+  }));
   const reportDate = (record) => record.createdAt || record.date || record.startDate || new Date();
   const asDate = (value) => {
     if (value instanceof Date) return value;
@@ -1890,7 +1961,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                 </button>
               </div>
 
-              <nav className="sidebar-nav">
+<button type="button" className="mobile-admin-menu-toggle" onClick={() => setSidebarMenuOpen((open) => !open)} aria-controls="admin-navigation" aria-expanded={sidebarMenuOpen} aria-label="Abrir menu administrativo"><Menu size={20} /><span>Menu administrativo</span></button><nav id="admin-navigation" className={`sidebar-nav ${sidebarMenuOpen ? 'is-open' : ''}`}>
                 {sidebarSections.map((section) => (
                   <div key={section.title || 'main'} className="sidebar-section">
                     {section.title && <div className="section-label">{section.title}</div>}
@@ -1900,7 +1971,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                         <button
                           key={item.key}
                           className={`nav-item-btn ${activeTab === item.key ? 'active' : ''}`}
-                          onClick={() => handleTabChange(item.key)}
+                          onClick={() => { handleTabChange(item.key); setSidebarMenuOpen(false); }}
                         >
                           <Icon size={16} />
                           <span>{item.label}</span>
@@ -1946,39 +2017,30 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
 
                   <div className="stats-metric-grid">
                     <div className="metric-card">
-                      <div className="metric-topline">
-                        <span className="trend positive"><ArrowUpRight size={14} /> 0%</span>
-                      </div>
                       <div className="metric-body">
                         <div className="icon-wrapper default-icon">
                           <TrendingUp size={20} />
                         </div>
                         <div className="metric-info">
                           <h3>R$ {monthlyRevenue.toLocaleString('pt-BR')}</h3>
-                          <p>Receita do mês</p>
+                          <p>Entradas do mês</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="metric-card">
-                      <div className="metric-topline">
-                        <span className="trend negative"><ArrowDownRight size={14} /> 0%</span>
-                      </div>
                       <div className="metric-body">
                         <div className="icon-wrapper active-icon">
                           <TrendingUp size={20} />
                         </div>
                         <div className="metric-info">
                           <h3>R$ {monthlyExpenses.toLocaleString('pt-BR')}</h3>
-                          <p>Despesas do mês</p>
+                          <p>Saídas do mês</p>
                         </div>
                       </div>
                     </div>
 
                     <div className="metric-card">
-                      <div className="metric-topline">
-                        <span className="trend positive"><ArrowUpRight size={14} /> 0%</span>
-                      </div>
                       <div className="metric-body">
                         <div className="icon-wrapper alert-icon">
                           <FileText size={20} />
@@ -1991,50 +2053,21 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                     </div>
 
                     <div className="metric-card">
-                      <div className="metric-topline">
-                        <span className="trend positive"><ArrowUpRight size={14} /> 0%</span>
-                      </div>
                       <div className="metric-body">
-                        <div className="icon-wrapper ocup-icon">
-                          <Check size={20} />
-                        </div>
-                        <div className="metric-info">
-                          <h3>{occupancyRate}%</h3>
-                          <p>Taxa de ocupação</p>
+                        <div className="icon-wrapper ocup-icon"><FileText size={20} /></div><div className="metric-info"><h3>{formatCurrency(monthlyBalance)}</h3><p>Saldo do mês</p>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="stats-subgrid">
-                    <div className="mini-stat-card">
-                      <div className="mini-icon green"><Car size={18} /></div>
-                      <div className="mini-stat-body">
-                        <h3>{totalVehiclesCount}</h3>
-                        <p>Total de veículos</p>
-                      </div>
-                    </div>
-                    <div className="mini-stat-card">
-                      <div className="mini-icon green"><Check size={18} /></div>
-                      <div className="mini-stat-body">
-                        <h3>{availableVehiclesCount}</h3>
-                        <p>Disponíveis</p>
-                      </div>
-                    </div>
-                    <div className="mini-stat-card">
-                      <div className="mini-icon green"><Car size={18} /></div>
-                      <div className="mini-stat-body">
-                        <h3>{rentedVehiclesCount}</h3>
-                        <p>Em locação</p>
-                      </div>
-                    </div>
-                    <div className="mini-stat-card">
-                      <div className="mini-icon green"><TrendingUp size={18} /></div>
-                      <div className="mini-stat-body">
-                        <h3>{maintenanceVehiclesCount}</h3>
-                        <p>Em manutenção</p>
-                      </div>
-                    </div>
+<div className="stats-subgrid">
+                    <div className="mini-stat-card"><div className="mini-icon green"><Car size={18} /></div><div className="mini-stat-body"><h3>{totalVehiclesCount}</h3><p>Total de veículos</p></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><Check size={18} /></div><div className="mini-stat-body"><h3>{rentedVehiclesCount}</h3><p>Já alugados</p><small>Com pagamento registrado</small></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><Wrench size={18} /></div><div className="mini-stat-body"><h3>{maintenanceVehiclesCount}</h3><p>Em manutenção</p><small>Em manutenção</small></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><CalendarDays size={18} /></div><div className="mini-stat-body"><h3>{reservedVehiclesCount}</h3><p>Reservados</p><small>Reservas cadastradas</small></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><FileText size={18} /></div><div className="mini-stat-body"><h3>{contractsCount}</h3><p>Contratos</p><small>Contratos cadastrados</small></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><CircleDollarSign size={18} /></div><div className="mini-stat-body"><h3>{pendingCollectionsCount}</h3><p>Cobranças pendentes</p></div></div>
+                    <div className="mini-stat-card"><div className="mini-icon green"><AlertTriangle size={18} /></div><div className="mini-stat-body"><h3>{overdueCollectionsCount}</h3><p>Cobranças vencidas</p></div></div>
                   </div>
 
                   <div className="dashboard-bottom-grid">
@@ -2677,7 +2710,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                     </div>
                   </div>
 
-                  <div className="drivers-page-heading"><div><h2>Pagamentos</h2><p>Registro de pagamentos recebidos</p></div><button className="btn btn-primary btn-sm btn-new-user" onClick={() => setPaymentFormOpen(true)}><Plus size={17} /> Novo Pagamento</button></div><div className="client-summary-grid"><div className="client-summary-card pf"><strong>{formatCurrency(payments.reduce((s,p) => s + p.value,0))}</strong><span>Total recebido</span></div><div className="client-summary-card total"><strong>{payments.length}</strong><span>Transações</span></div><div className="client-summary-card pj"><strong>{payments.filter(p=>p.receipt).length}</strong><span>Com comprovante</span></div></div><section className="users-list-card"><div className="users-table-scroll"><table className="clients-table"><thead><tr><th>Motorista</th><th>Contrato</th><th>Valor</th><th>Forma</th><th>Data</th><th>Comprovante</th></tr></thead><tbody>{payments.length ? payments.map(p=><tr key={p.id}><td>{p.driver}</td><td>{p.contract}</td><td className="reservation-value">{formatCurrency(p.value)}</td><td><span className="rental-plan">{p.method}</span></td><td>{p.date}</td><td>{p.receipt ? 'Anexado' : '—'}</td></tr>) : <tr><td colSpan="6" className="table-empty-state">Nenhum pagamento cadastrado no momento.</td></tr>}</tbody></table></div></section>{paymentFormOpen && <div className="user-form-overlay" onClick={()=>setPaymentFormOpen(false)}><form className="reservation-form-modal" onSubmit={handlePaymentSubmit} onClick={e=>e.stopPropagation()}><div className="user-form-header"><h3>Novo Pagamento</h3><button type="button" onClick={()=>setPaymentFormOpen(false)}><X size={20}/></button></div><div className="reservation-form-content"><label className="user-form-field full">Motorista<select required value={paymentForm.driver} onChange={e=>setPaymentForm({...paymentForm,driver:e.target.value})}><option value="">Selecione o motorista</option>{drivers.map(d=><option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName} ({d.cpf || d.email})</option>)}</select></label><label className="user-form-field full">Número do contrato<input required value={paymentForm.contract} onChange={e=>setPaymentForm({...paymentForm,contract:e.target.value})} placeholder="CT-2024-000"/></label><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" value={paymentForm.value} onChange={e=>setPaymentForm({...paymentForm,value:e.target.value})}/></label><label className="user-form-field">Forma<select value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value})}><option>Pix</option><option>Cartão</option><option>Transferência</option><option>Boleto</option><option>Dinheiro</option></select></label></div><label className="user-form-field full">Data<input required type="date" value={paymentForm.date} onChange={e=>setPaymentForm({...paymentForm,date:e.target.value})}/></label><label className="user-form-field full">Comprovante<input type="file" accept="application/pdf,image/*" onChange={e=>setPaymentForm({...paymentForm,receipt:e.target.files?.[0]||null})}/></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={()=>setPaymentFormOpen(false)}>Cancelar</button><button className="btn btn-primary">Cadastrar</button></div></form></div>}
+                  <div className="drivers-page-heading"><div><h2>Pagamentos</h2><p>Registro de pagamentos recebidos</p></div><button className="btn btn-primary btn-sm btn-new-user" onClick={() => setPaymentFormOpen(true)}><Plus size={17} /> Novo Pagamento</button></div><div className="client-summary-grid"><div className="client-summary-card pf"><strong>{formatCurrency(payments.reduce((s,p) => s + p.value,0))}</strong><span>Total recebido</span></div><div className="client-summary-card total"><strong>{payments.length}</strong><span>Transações</span></div><div className="client-summary-card pj"><strong>{payments.filter(p=>p.receipt).length}</strong><span>Com comprovante</span></div></div><section className="users-list-card"><div className="users-table-scroll"><table className="clients-table"><thead><tr><th>Motorista</th><th>Contrato</th><th>Valor</th><th>Forma</th><th>Data</th><th>Comprovante</th></tr></thead><tbody>{payments.length ? payments.map(p=><tr key={p.id}><td>{p.driver}</td><td>{p.contract}</td><td className="reservation-value">{formatCurrency(p.value)}</td><td><span className="rental-plan">{p.method}</span></td><td>{p.date}</td><td>{p.receipt ? 'Anexado' : '—'}</td></tr>) : <tr><td colSpan="6" className="table-empty-state">Nenhum pagamento cadastrado no momento.</td></tr>}</tbody></table></div></section>{paymentFormOpen && <div className="user-form-overlay" onClick={()=>setPaymentFormOpen(false)}><form className="reservation-form-modal" onSubmit={handlePaymentSubmit} onClick={e=>e.stopPropagation()}><div className="user-form-header"><h3>Novo Pagamento</h3><button type="button" onClick={()=>setPaymentFormOpen(false)}><X size={20}/></button></div><div className="reservation-form-content"><label className="user-form-field full">Motorista<input required value={paymentForm.driver} onChange={e=>setPaymentForm({...paymentForm,driver:e.target.value})} placeholder="Digite o nome do motorista" /></label><label className="user-form-field full">Número do contrato<input required value={paymentForm.contract} onChange={e=>setPaymentForm({...paymentForm,contract:e.target.value})} placeholder="CT-2024-000"/></label><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" value={paymentForm.value} onChange={e=>setPaymentForm({...paymentForm,value:e.target.value})}/></label><label className="user-form-field">Forma<select value={paymentForm.method} onChange={e=>setPaymentForm({...paymentForm,method:e.target.value})}><option>Pix</option><option>Cartão</option><option>Transferência</option><option>Boleto</option><option>Dinheiro</option></select></label></div><label className="user-form-field full">Data<input required type="date" value={paymentForm.date} onChange={e=>setPaymentForm({...paymentForm,date:e.target.value})}/></label><label className="user-form-field full">Comprovante<input type="file" accept="application/pdf,image/*" onChange={e=>setPaymentForm({...paymentForm,receipt:e.target.files?.[0]||null})}/></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={()=>setPaymentFormOpen(false)}>Cancelar</button><button className="btn btn-primary">Cadastrar</button></div></form></div>}
                 </div>
               )}
 
@@ -2881,9 +2914,9 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                         <div className="user-form-header"><h3>Nova Locação</h3><button type="button" onClick={closeRentalForm} aria-label="Fechar cadastro"><X size={20} /></button></div>
                         <div className="driver-form-content">
                           <h4>Dados da locação</h4>
-                          <label className="user-form-field full">Cliente<select value={rentalFormData.client} onChange={(e) => setRentalFormData({ ...rentalFormData, client: e.target.value })}><option value="">Selecione o cliente</option>{clients.map((c) => <option key={c.id} value={c.name}>{c.name} ({c.document || 'PF/PJ'})</option>)}</select></label>
-                          <div className="user-form-row"><label className="user-form-field">Motorista<select value={rentalFormData.driver} onChange={(e) => setRentalFormData({ ...rentalFormData, driver: e.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field">Veículo<select value={rentalFormData.vehicle} onChange={(e) => setRentalFormData({ ...rentalFormData, vehicle: e.target.value })}><option value="">Selecione o veículo</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.brand} {vehicle.name}</option>)}</select></label></div>
-                          <div className="user-form-row"><label className="user-form-field">Plano<select value={rentalFormData.plan} onChange={(e) => setRentalFormData({ ...rentalFormData, plan: e.target.value })}><option value="">Selecione o plano</option><option>Diário</option><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></label><label className="user-form-field">Situação<select value={rentalFormData.status} onChange={(e) => setRentalFormData({ ...rentalFormData, status: e.target.value })}><option>Ativa</option><option>Encerrada</option><option>Cancelada</option><option>Agendada</option></select></label></div>
+                          <label className="user-form-field full">Cliente<input type="text" value={rentalFormData.client} onChange={(e) => setRentalFormData({ ...rentalFormData, client: e.target.value })} placeholder="Digite o nome do cliente" /></label>
+                          <div className="user-form-row"><label className="user-form-field">Motorista<input type="text" value={rentalFormData.driver} onChange={(e) => setRentalFormData({ ...rentalFormData, driver: e.target.value })} placeholder="Digite o nome do motorista" /></label><label className="user-form-field">Veículo<input type="text" value={rentalFormData.vehicle} onChange={(e) => setRentalFormData({ ...rentalFormData, vehicle: e.target.value })} placeholder="Digite o veículo" /></label></div>
+                          <div className="user-form-row"><label className="user-form-field">Plano<input type="text" value={rentalFormData.plan} onChange={(e) => setRentalFormData({ ...rentalFormData, plan: e.target.value })} placeholder="Digite o plano" /></label><label className="user-form-field">Situação<input type="text" value={rentalFormData.status} onChange={(e) => setRentalFormData({ ...rentalFormData, status: e.target.value })} placeholder="Digite a situação" /></label></div>
                           <div className="user-form-row"><label className="user-form-field">Data de início<input type="date" value={rentalFormData.startDate} onChange={(e) => setRentalFormData({ ...rentalFormData, startDate: e.target.value })} /></label><label className="user-form-field">Data prevista de devolução<input type="date" value={rentalFormData.returnDate} onChange={(e) => setRentalFormData({ ...rentalFormData, returnDate: e.target.value })} /></label></div>
                           <div className="user-form-row"><label className="user-form-field">Período (dias)<input type="number" min="1" placeholder="Quantidade de dias" value={rentalFormData.days} onChange={(e) => setRentalFormData({ ...rentalFormData, days: e.target.value })} /></label><label className="user-form-field">Valor da locação (R$)<input type="number" min="0" placeholder="0,00" value={rentalFormData.value} onChange={(e) => setRentalFormData({ ...rentalFormData, value: e.target.value })} /></label></div>
                           <div className="user-form-row"><label className="user-form-field">Forma de pagamento<select value={rentalFormData.paymentMethod} onChange={(e) => setRentalFormData({ ...rentalFormData, paymentMethod: e.target.value })}><option value="">Selecione</option><option>Pix</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Dinheiro</option><option>Transferência bancária</option></select></label><label className="user-form-field">Limite de quilometragem (km)<input type="number" min="0" placeholder="Ex: 1000" value={rentalFormData.mileageLimit} onChange={(e) => setRentalFormData({ ...rentalFormData, mileageLimit: e.target.value })} /></label></div>
@@ -3226,10 +3259,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                         <div className="contract-form-content">
                           <div className="user-form-row">
                             <label className="user-form-field">Veículo
-                              <select required value={maintenanceForm.vehicle} onChange={e => setMaintenanceForm({ ...maintenanceForm, vehicle: e.target.value })}>
-                                <option value="">Selecionar veículo</option>
-                                {vehicles.map(v => <option key={v.id} value={v.id}>{v.brand} {v.name}</option>)}
-                              </select>
+                              <input required value={maintenanceForm.vehicle} onChange={e => setMaintenanceForm({ ...maintenanceForm, vehicle: e.target.value })} placeholder="Digite o veículo" />
                             </label>
                             <label className="user-form-field">Tipo
                               <select value={maintenanceForm.type} onChange={e => setMaintenanceForm({ ...maintenanceForm, type: e.target.value })}>
@@ -3281,6 +3311,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                         </div>
                       </form>
                     </div>
+                  )}
                 </div>
               )}
 
@@ -3416,6 +3447,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                                 <option>Manutenção</option>
                                 <option>Multa</option>
                                 <option>Taxa</option>
+                                <option>Pagamento</option>
                                 <option>Outros</option>
                               </select>
                             </label>
@@ -3423,6 +3455,21 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                               <input required type="number" min="0" value={cashForm.value} onChange={(e) => setCashForm({ ...cashForm, value: e.target.value })} placeholder="0" />
                             </label>
                           </div>
+                          {cashForm.type === 'Entrada' && cashForm.category === 'Pagamento' && <>
+                            <label className="user-form-field full">Motorista
+                              <input required value={cashForm.driver || ''} onChange={(e) => setCashForm({ ...cashForm, driver: e.target.value })} placeholder="Nome do motorista" />
+                            </label>
+                            <div className="user-form-row">
+                              <label className="user-form-field">Contrato
+                                <input value={cashForm.contract || ''} onChange={(e) => setCashForm({ ...cashForm, contract: e.target.value })} placeholder="CT-2024-000" />
+                              </label>
+                              <label className="user-form-field">Forma de pagamento
+                                <select value={cashForm.method || 'Pix'} onChange={(e) => setCashForm({ ...cashForm, method: e.target.value })}>
+                                  <option>Pix</option><option>Cartão</option><option>Transferência</option><option>Boleto</option><option>Dinheiro</option>
+                                </select>
+                              </label>
+                            </div>
+                          </>}
                           <label className="user-form-field full">Status
                             <select value={cashForm.status} onChange={(e) => setCashForm({ ...cashForm, status: e.target.value })}>
                               <option>Pago</option>
@@ -3442,10 +3489,9 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   )}
                 </div>
               )}
-              )}
 
               {activeTab === 'contracts' && (
-                <div className="tab-pane contracts-tab-pane"><div className="dashboard-header-bar users-topbar"><h2 className="view-title">Contratos</h2><div className="dashboard-actions"><div className="search-box"><Search size={16} /><input type="text" placeholder="Buscar..." /></div><button className="icon-action-btn" aria-label="Notificações"><Bell size={16} /></button><div className="user-avatar-mini">A</div></div></div><div className="drivers-page-heading contracts-heading"><div><h2>Contratos</h2><p>Gestão de contratos de locação</p></div><button className="btn btn-primary btn-sm btn-new-user" onClick={() => setContractFormOpen(true)}><Plus size={17} /> Novo Contrato</button></div><div className="contract-summary-grid"><div><strong>{contracts.filter((item) => item.status === 'Em elaboração').length}</strong><span>Em elaboração</span></div><div><strong>{contracts.filter((item) => item.status === 'Vigente').length}</strong><span>Vigentes</span></div><div><strong>{contracts.filter((item) => item.status === 'Renovado').length}</strong><span>Renovados</span></div><div><strong>{contracts.filter((item) => item.status === 'Encerrado').length}</strong><span>Encerrados</span></div></div><div className="contract-toolbar"><div className="users-filter contract-search"><Search size={16} /><input value={contractSearch} onChange={(event) => setContractSearch(event.target.value)} placeholder="Buscar por número, cliente ou motorista..." /></div><select value={contractStatusFilter} onChange={(event) => setContractStatusFilter(event.target.value)}><option>Todos os status</option><option>Em elaboração</option><option>Vigente</option><option>Renovado</option><option>Encerrado</option></select><button className="btn btn-secondary btn-sm"><Download size={16} /> Exportar CSV</button></div><section className="users-list-card"><div className="users-table-scroll"><table className="contracts-table"><thead><tr><th>Número</th><th>Cliente</th><th>Motorista</th><th>Veículo</th><th>Valor</th><th>Vigência</th><th>PDF</th><th>Status</th><th /></tr></thead><tbody>{visibleContracts.length ? visibleContracts.map((contract) => <tr key={contract.id}><td className="contract-number">{contract.number}</td><td>{contract.client}</td><td>{contract.driver}</td><td>{contract.vehicle}</td><td className="contract-value">{formatCurrency(contract.value)}</td><td>{contract.startDate} →<br />{contract.endDate}</td><td>{contract.file ? <span className="contract-file"><FileText size={15} /> Anexado</span> : '—'}</td><td><span className={`reservation-status ${contract.status.toLocaleLowerCase().replace(' ', '-')}`}>{contract.status}</span></td><td><button className="rental-menu-trigger" aria-label="Ações"><MoreVertical size={18} /></button></td></tr>) : <tr><td colSpan="9" className="table-empty-state">Nenhum contrato cadastrado no momento.</td></tr>}</tbody></table></div></section>{contractFormOpen && <div className="user-form-overlay" onClick={() => setContractFormOpen(false)}><form className="contract-form-modal" onSubmit={handleContractSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Novo Contrato</h3><button type="button" onClick={() => setContractFormOpen(false)}><X size={20} /></button></div><div className="contract-form-content"><div className="user-form-row"><label className="user-form-field">Número do contrato<input required value={contractForm.number} onChange={(event) => setContractForm({ ...contractForm, number: event.target.value })} /></label><label className="user-form-field">Plano<select value={contractForm.plan} onChange={(event) => setContractForm({ ...contractForm, plan: event.target.value })}><option>Mensal</option><option>Quinzenal</option><option>Semanal</option></select></label></div><label className="user-form-field full">Cliente<select required value={contractForm.client} onChange={(event) => setContractForm({ ...contractForm, client: event.target.value })}><option value="">Selecione o cliente</option>{clients.map((c) => <option key={c.id} value={c.name}>{c.name} ({c.document})</option>)}</select></label><div className="user-form-row"><label className="user-form-field">Motorista<select required value={contractForm.driver} onChange={(event) => setContractForm({ ...contractForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field">Veículo<select required value={contractForm.vehicle} onChange={(event) => setContractForm({ ...contractForm, vehicle: event.target.value })}><option value="">Selecione o veículo</option>{vehicles.map((v) => <option key={v.id} value={`${v.brand} ${v.name}`}>{v.brand} {v.name}</option>)}</select></label></div><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" min="0" value={contractForm.value} onChange={(event) => setContractForm({ ...contractForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Caução (R$)<input type="number" min="0" value={contractForm.deposit} onChange={(event) => setContractForm({ ...contractForm, deposit: event.target.value })} placeholder="0" /></label></div><div className="user-form-row"><label className="user-form-field">Data inicial<input required type="date" value={contractForm.startDate} onChange={(event) => setContractForm({ ...contractForm, startDate: event.target.value })} /></label><label className="user-form-field">Data final<input required type="date" value={contractForm.endDate} onChange={(event) => setContractForm({ ...contractForm, endDate: event.target.value })} /></label></div><label className="user-form-field full">Status<select value={contractForm.status} onChange={(event) => setContractForm({ ...contractForm, status: event.target.value })}><option>Em elaboração</option><option>Vigente</option><option>Renovado</option><option>Encerrado</option></select></label><label className="user-form-field full">Contrato (PDF)<input type="file" accept="application/pdf" onChange={(event) => setContractForm({ ...contractForm, file: event.target.files?.[0] || null })} /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setContractFormOpen(false)}>Cancelar</button><button className="btn btn-primary">Cadastrar</button></div></form></div>}</div>
+                <div className="tab-pane contracts-tab-pane"><div className="dashboard-header-bar users-topbar"><h2 className="view-title">Contratos</h2><div className="dashboard-actions"><div className="search-box"><Search size={16} /><input type="text" placeholder="Buscar..." /></div><button className="icon-action-btn" aria-label="Notificações"><Bell size={16} /></button><div className="user-avatar-mini">A</div></div></div><div className="drivers-page-heading contracts-heading"><div><h2>Contratos</h2><p>Gestão de contratos de locação</p></div><button className="btn btn-primary btn-sm btn-new-user" onClick={() => setContractFormOpen(true)}><Plus size={17} /> Novo Contrato</button></div><div className="contract-summary-grid"><div><strong>{contracts.filter((item) => item.status === 'Em elaboração').length}</strong><span>Em elaboração</span></div><div><strong>{contracts.filter((item) => item.status === 'Vigente').length}</strong><span>Vigentes</span></div><div><strong>{contracts.filter((item) => item.status === 'Renovado').length}</strong><span>Renovados</span></div><div><strong>{contracts.filter((item) => item.status === 'Encerrado').length}</strong><span>Encerrados</span></div></div><div className="contract-toolbar"><div className="users-filter contract-search"><Search size={16} /><input value={contractSearch} onChange={(event) => setContractSearch(event.target.value)} placeholder="Buscar por número, cliente ou motorista..." /></div><select value={contractStatusFilter} onChange={(event) => setContractStatusFilter(event.target.value)}><option>Todos os status</option><option>Em elaboração</option><option>Vigente</option><option>Renovado</option><option>Encerrado</option></select><button className="btn btn-secondary btn-sm"><Download size={16} /> Exportar CSV</button></div><section className="users-list-card"><div className="users-table-scroll"><table className="contracts-table"><thead><tr><th>Número</th><th>Cliente</th><th>Motorista</th><th>Veículo</th><th>Valor</th><th>Vigência</th><th>PDF</th><th>Status</th><th /></tr></thead><tbody>{visibleContracts.length ? visibleContracts.map((contract) => <tr key={contract.id}><td className="contract-number">{contract.number}</td><td>{contract.client}</td><td>{contract.driver}</td><td>{contract.vehicle}</td><td className="contract-value">{formatCurrency(contract.value)}</td><td>{contract.startDate} →<br />{contract.endDate}</td><td>{contract.file ? <span className="contract-file"><FileText size={15} /> Anexado</span> : '—'}</td><td><span className={`reservation-status ${contract.status.toLocaleLowerCase().replace(' ', '-')}`}>{contract.status}</span></td><td><div className="rental-actions-cell"><button className="rental-menu-trigger" onClick={() => setContractMenu(contractMenu === contract.id ? null : contract.id)} aria-label="Ações"><MoreVertical size={18} /></button>{contractMenu === contract.id && <div className="rental-actions-menu"><button className="inspection-delete-action" onClick={() => handleContractDelete(contract)}>Excluir</button></div>}</div></td></tr>) : <tr><td colSpan="9" className="table-empty-state">Nenhum contrato cadastrado no momento.</td></tr>}</tbody></table></div></section>{contractFormOpen && <div className="user-form-overlay" onClick={() => setContractFormOpen(false)}><form className="contract-form-modal" onSubmit={handleContractSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Novo Contrato</h3><button type="button" onClick={() => setContractFormOpen(false)}><X size={20} /></button></div><div className="contract-form-content"><div className="user-form-row"><label className="user-form-field">Número do contrato<input required value={contractForm.number} onChange={(event) => setContractForm({ ...contractForm, number: event.target.value })} /></label><label className="user-form-field">Plano<select value={contractForm.plan} onChange={(event) => setContractForm({ ...contractForm, plan: event.target.value })}><option>Mensal</option><option>Quinzenal</option><option>Semanal</option></select></label></div><label className="user-form-field full">Cliente<input required value={contractForm.client} onChange={(event) => setContractForm({ ...contractForm, client: event.target.value })} placeholder="Digite o nome do cliente" /></label><label className="user-form-field full">Veículo<input required value={contractForm.vehicle} onChange={(event) => setContractForm({ ...contractForm, vehicle: event.target.value })} placeholder="Digite o veículo" /></label><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" min="0" value={contractForm.value} onChange={(event) => setContractForm({ ...contractForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Caução (R$)<input type="number" min="0" value={contractForm.deposit} onChange={(event) => setContractForm({ ...contractForm, deposit: event.target.value })} placeholder="0" /></label></div><div className="user-form-row"><label className="user-form-field">Data inicial<input required type="date" value={contractForm.startDate} onChange={(event) => setContractForm({ ...contractForm, startDate: event.target.value })} /></label><label className="user-form-field">Data final<input required type="date" value={contractForm.endDate} onChange={(event) => setContractForm({ ...contractForm, endDate: event.target.value })} /></label></div><label className="user-form-field full">Status<select value={contractForm.status} onChange={(event) => setContractForm({ ...contractForm, status: event.target.value })}><option>Em elaboração</option><option>Vigente</option><option>Renovado</option><option>Encerrado</option></select></label><label className="user-form-field full">Contrato (PDF)<input type="file" accept="application/pdf" onChange={(event) => setContractForm({ ...contractForm, file: event.target.files?.[0] || null })} /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setContractFormOpen(false)}>Cancelar</button><button className="btn btn-primary">Cadastrar</button></div></form></div>}</div>
               )}
 
               {activeTab === 'reservations' && (
@@ -3455,7 +3501,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <div className="reservation-summary-grid"><div className="reservation-summary-card"><strong>{reservations.filter((item) => item.status === 'Pendente').length}</strong><span>Pendentes</span></div><div className="reservation-summary-card"><strong>{reservations.filter((item) => item.status === 'Confirmada').length}</strong><span>Confirmadas</span></div><div className="reservation-summary-card"><strong>{reservations.filter((item) => item.status === 'Cancelada').length}</strong><span>Canceladas</span></div></div>
                   <div className="reservation-toolbar"><div className="users-filter reservation-search"><Search size={16} /><input value={reservationSearch} onChange={(event) => setReservationSearch(event.target.value)} placeholder="Buscar por cliente ou veículo..." /></div><select value={reservationStatusFilter} onChange={(event) => setReservationStatusFilter(event.target.value)}><option>Todos os status</option><option>Pendente</option><option>Confirmada</option><option>Cancelada</option></select><button className="btn btn-secondary btn-sm"><Download size={16} /> Exportar CSV</button></div>
                   <section className="users-list-card reservations-list-card"><div className="users-table-scroll"><table className="reservations-table"><thead><tr><th>Cliente</th><th>Motorista</th><th>Veículo</th><th>Data</th><th>Período</th><th>Valor</th><th>Status</th><th /></tr></thead><tbody>{visibleReservations.length ? visibleReservations.map((reservation) => <tr key={reservation.id}><td className="reservation-client">{reservation.client}</td><td>{reservation.driver}</td><td>{reservation.vehicle}</td><td>{reservation.date}</td><td><span className="rental-plan">{reservation.period}</span></td><td className="reservation-value">{formatCurrency(reservation.value)}</td><td><span className={`reservation-status ${reservation.status.toLocaleLowerCase()}`}>{reservation.status}</span></td><td><button className="rental-menu-trigger" aria-label="Ações"><MoreVertical size={18} /></button></td></tr>) : <tr><td colSpan="8" className="table-empty-state">Nenhuma reserva cadastrada no momento.</td></tr>}</tbody></table></div></section>
-                  {reservationFormOpen && <div className="user-form-overlay" onClick={() => setReservationFormOpen(false)}><form className="reservation-form-modal" onSubmit={handleReservationSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Nova Reserva</h3><button type="button" onClick={() => setReservationFormOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="reservation-form-content"><label className="user-form-field full">Cliente<select required value={reservationForm.client} onChange={(event) => setReservationForm({ ...reservationForm, client: event.target.value })}><option value="">Selecione o cliente</option>{clients.map((c) => <option key={c.id} value={c.name}>{c.name} ({c.document})</option>)}</select></label><label className="user-form-field full">Motorista<select required value={reservationForm.driver} onChange={(event) => setReservationForm({ ...reservationForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field full">Veículo<select required value={reservationForm.vehicle} onChange={(event) => setReservationForm({ ...reservationForm, vehicle: event.target.value })}><option value="">Selecione o veículo</option>{vehicles.map((v) => <option key={v.id} value={`${v.brand} ${v.name}`}>{v.brand} {v.name}</option>)}</select></label><div className="user-form-row"><label className="user-form-field">Data<input required type="date" value={reservationForm.date} onChange={(event) => setReservationForm({ ...reservationForm, date: event.target.value })} /></label><label className="user-form-field">Período<select value={reservationForm.period} onChange={(event) => setReservationForm({ ...reservationForm, period: event.target.value })}><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></label></div><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" min="0" value={reservationForm.value} onChange={(event) => setReservationForm({ ...reservationForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Status<select value={reservationForm.status} onChange={(event) => setReservationForm({ ...reservationForm, status: event.target.value })}><option>Pendente</option><option>Confirmada</option><option>Cancelada</option></select></label></div></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setReservationFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary">Cadastrar</button></div></form></div>}
+                  {reservationFormOpen && <div className="user-form-overlay" onClick={() => setReservationFormOpen(false)}><form className="reservation-form-modal" onSubmit={handleReservationSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Nova Reserva</h3><button type="button" onClick={() => setReservationFormOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="reservation-form-content"><label className="user-form-field full">Cliente<input required value={reservationForm.client} onChange={(event) => setReservationForm({ ...reservationForm, client: event.target.value })} placeholder="Digite o nome do cliente" /></label><label className="user-form-field full">Motorista<select required value={reservationForm.driver} onChange={(event) => setReservationForm({ ...reservationForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field full">Veículo<select required value={reservationForm.vehicle} onChange={(event) => setReservationForm({ ...reservationForm, vehicle: event.target.value })}><option value="">Selecione o veículo</option>{vehicles.map((v) => <option key={v.id} value={`${v.brand} ${v.name}`}>{v.brand} {v.name}</option>)}</select></label><div className="user-form-row"><label className="user-form-field">Data<input required type="date" value={reservationForm.date} onChange={(event) => setReservationForm({ ...reservationForm, date: event.target.value })} /></label><label className="user-form-field">Período<select value={reservationForm.period} onChange={(event) => setReservationForm({ ...reservationForm, period: event.target.value })}><option>Semanal</option><option>Quinzenal</option><option>Mensal</option></select></label></div><div className="user-form-row"><label className="user-form-field">Valor (R$)<input required type="number" min="0" value={reservationForm.value} onChange={(event) => setReservationForm({ ...reservationForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Status<select value={reservationForm.status} onChange={(event) => setReservationForm({ ...reservationForm, status: event.target.value })}><option>Pendente</option><option>Confirmada</option><option>Cancelada</option></select></label></div></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setReservationFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary">Cadastrar</button></div></form></div>}
                 </div>
               )}
 
@@ -3467,7 +3513,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <div className="inspection-toolbar"><div className="users-filter inspection-search"><Search size={16} /><input value={inspectionSearch} onChange={(event) => setInspectionSearch(event.target.value)} placeholder="Buscar por cliente, veículo, motorista..." /></div><select value={inspectionTypeFilter} onChange={(event) => setInspectionTypeFilter(event.target.value)}><option>Todos os tipos</option><option>Saída</option><option>Devolução</option></select><select value={inspectionStatusFilter} onChange={(event) => setInspectionStatusFilter(event.target.value)}><option>Todos os status</option><option>Agendada</option><option>Em andamento</option><option>Concluída</option></select><button className="btn btn-secondary btn-sm"><Download size={16} /> Exportar CSV</button></div>
                   <div className="inspection-create-actions"><button className="btn btn-primary btn-sm" onClick={() => { setInspectionForm({ ...inspectionForm, type: 'Saída' }); setInspectionFormOpen(true); }}><Camera size={16} /> Vistoria de Saída</button><button className="btn btn-secondary btn-sm inspection-return-btn" onClick={() => { setInspectionForm({ ...inspectionForm, type: 'Devolução' }); setInspectionFormOpen(true); }}><Camera size={16} /> Vistoria de Devolução</button></div>
                   <section className="users-list-card inspections-list-card"><div className="users-table-scroll"><table className="inspections-table"><thead><tr><th>Tipo</th><th>Cliente</th><th>Veículo</th><th>Motorista</th><th>Data/Hora</th><th>Vistoriador</th><th>Fotos</th><th>Status</th><th /></tr></thead><tbody>{visibleInspections.length ? visibleInspections.map((inspection) => <tr key={inspection.id}><td><span className={`inspection-type ${inspection.type === 'Saída' ? 'exit' : 'return'}`}><Camera size={12} /> {inspection.type}</span></td><td className="inspection-client">{inspection.client}</td><td>{inspection.vehicle}<small>{inspection.plate}</small></td><td>{inspection.driver}</td><td>{inspection.date}<small>{inspection.time}</small></td><td>{inspection.inspector}</td><td><span className="inspection-photo-count"><Camera size={12} /> {inspection.photos}</span></td><td><span className={`inspection-status ${inspection.status.toLocaleLowerCase().replace(' ', '-')}`}>{inspection.status}</span></td><td className="inspection-actions"><button className="rental-menu-trigger" onClick={() => setInspectionMenu(inspectionMenu === inspection.id ? null : inspection.id)} aria-label="Ações"><MoreVertical size={18} /></button>{inspectionMenu === inspection.id && <div className="rental-actions-menu"><button>Ver detalhes</button><button>Editar</button><button className="inspection-delete-action" onClick={() => { setInspections((current) => current.filter((item) => item.id !== inspection.id)); setInspectionMenu(null); }}>Excluir</button></div>}</td></tr>) : <tr><td colSpan="9" className="table-empty-state">Nenhuma vistoria encontrada.</td></tr>}</tbody></table></div></section>
-                  {inspectionFormOpen && <div className="user-form-overlay" onClick={() => setInspectionFormOpen(false)}><form className="inspection-form-modal" onSubmit={handleInspectionSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Vistoria de {inspectionForm.type}</h3><button type="button" onClick={() => setInspectionFormOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="inspection-steps"><span className="active">1</span><b>Dados</b><i /><span>2</span><b>Veículo & Combustível</b><i /><span>3</span><b>Checklist de Fotos</b></div><div className="inspection-form-content"><div className="user-form-row"><label className="user-form-field">Tipo de vistoria<select value={inspectionForm.type} onChange={(event) => setInspectionForm({ ...inspectionForm, type: event.target.value })}><option>Saída</option><option>Devolução</option></select></label><label className="user-form-field">Contrato vinculado<select value={inspectionForm.contract} onChange={(event) => setInspectionForm({ ...inspectionForm, contract: event.target.value })}><option value="">Selecione um contrato</option>{contracts.map((ct) => <option key={ct.id} value={ct.number || ct.id}>Contrato #{ct.number || ct.id} — {ct.client}</option>)}</select></label></div><label className="user-form-field full">Nome do cliente<select required value={inspectionForm.client} onChange={(event) => setInspectionForm({ ...inspectionForm, client: event.target.value })}><option value="">Selecione o cliente</option>{clients.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}</select></label><div className="user-form-row"><label className="user-form-field">Motorista<select required value={inspectionForm.driver} onChange={(event) => setInspectionForm({ ...inspectionForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field">Vistoriador<input required value={inspectionForm.inspector} onChange={(event) => setInspectionForm({ ...inspectionForm, inspector: event.target.value })} placeholder="Nome do vistoriador" /></label></div><div className="user-form-row"><label className="user-form-field">Data<input required type="date" value={inspectionForm.date} onChange={(event) => setInspectionForm({ ...inspectionForm, date: event.target.value })} /></label><label className="user-form-field">Horário<input required type="time" value={inspectionForm.time} onChange={(event) => setInspectionForm({ ...inspectionForm, time: event.target.value })} /></label></div></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setInspectionFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary">Avançar</button></div></form></div>}
+                  {inspectionFormOpen && <div className="user-form-overlay" onClick={() => setInspectionFormOpen(false)}><form className="inspection-form-modal" onSubmit={handleInspectionSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Vistoria de {inspectionForm.type}</h3><button type="button" onClick={() => setInspectionFormOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="inspection-steps"><span className="active">1</span><b>Dados</b><i /><span>2</span><b>Veículo & Combustível</b><i /><span>3</span><b>Checklist de Fotos</b></div><div className="inspection-form-content"><div className="user-form-row"><label className="user-form-field">Tipo de vistoria<select value={inspectionForm.type} onChange={(event) => setInspectionForm({ ...inspectionForm, type: event.target.value })}><option>Saída</option><option>Devolução</option></select></label><label className="user-form-field">Contrato vinculado<select value={inspectionForm.contract} onChange={(event) => setInspectionForm({ ...inspectionForm, contract: event.target.value })}><option value="">Selecione um contrato</option>{contracts.map((ct) => <option key={ct.id} value={ct.number || ct.id}>Contrato #{ct.number || ct.id} — {ct.client}</option>)}</select></label></div><label className="user-form-field full">Nome do cliente<input required value={inspectionForm.client} onChange={(event) => setInspectionForm({ ...inspectionForm, client: event.target.value })} placeholder="Digite o nome do cliente" /></label><div className="user-form-row"><label className="user-form-field">Motorista<select required value={inspectionForm.driver} onChange={(event) => setInspectionForm({ ...inspectionForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field">Vistoriador<input required value={inspectionForm.inspector} onChange={(event) => setInspectionForm({ ...inspectionForm, inspector: event.target.value })} placeholder="Nome do vistoriador" /></label></div><div className="user-form-row"><label className="user-form-field">Data<input required type="date" value={inspectionForm.date} onChange={(event) => setInspectionForm({ ...inspectionForm, date: event.target.value })} /></label><label className="user-form-field">Horário<input required type="time" value={inspectionForm.time} onChange={(event) => setInspectionForm({ ...inspectionForm, time: event.target.value })} /></label></div></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setInspectionFormOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary">Avançar</button></div></form></div>}
                 </div>
               )}
 
@@ -3494,12 +3540,9 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <section className="users-list-card collections-list-card">
                     <div className="users-table-scroll"><table className="collections-table"><thead><tr><th>Motorista</th><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Descrição</th><th>Status</th><th /></tr></thead><tbody>{visibleCollections.length ? visibleCollections.map((collection) => <tr key={collection.id}><td className="collection-driver">{collection.driver}</td><td>{collection.type}</td><td className="collection-date">{collection.dueDate}</td><td className="collection-value">{formatCurrency(collection.value)}</td><td>{collection.description || '—'}</td><td><span className={`collection-status ${collection.status.toLowerCase()}`}>{collection.status}</span></td><td><details><summary aria-label="Ações">•••</summary><div className="rental-actions-menu"><button type="button" onClick={() => updateCollection(collection.id, { status: 'Pago' })}>Marcar pago</button><button type="button" onClick={() => updateCollection(collection.id, { status: 'Pendente' })}>Marcar pendente</button><button type="button" onClick={() => updateCollection(collection.id, { status: 'Vencido' })}>Marcar vencido</button><label>Comprovante<input type="file" accept="application/pdf,image/*" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const fileData = await new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = reject; reader.readAsDataURL(file); }); await updateCollection(collection.id, { fileName: file.name, fileData }); }} /></label>{collection.fileData && <a href={collection.fileData} download={collection.fileName || 'comprovante'}>Baixar comprovante</a>}</div></details></td></tr>) : <tr><td colSpan="7" className="table-empty-state">Nenhuma cobrança cadastrada no momento.</td></tr>}</tbody></table></div>
                   </section>
-                  {collectionUploadOpen && <div className="user-form-overlay" onClick={() => setCollectionUploadOpen(false)}><form className="collection-upload-modal" onSubmit={handleCollectionUpload} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Nova cobrança</h3><button type="button" onClick={() => setCollectionUploadOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="collection-upload-content"><label className="user-form-field">Motorista<select autoFocus required value={collectionUpload.driver} onChange={(event) => setCollectionUpload({ ...collectionUpload, driver: event.target.value })}><option value="">Selecione o motorista</option>{drivers.map((d) => <option key={d.id} value={d.name || d.fullName}>{d.name || d.fullName}</option>)}</select></label><label className="user-form-field">Tipo<select value={collectionUpload.type} onChange={(event) => setCollectionUpload({ ...collectionUpload, type: event.target.value })}><option>Aluguel</option><option>Multa</option><option>Taxa</option><option>Manutenção</option><option>Outro</option></select></label><div className="user-form-row"><label className="user-form-field">Vencimento<input required type="date" value={collectionUpload.dueDate} onChange={(event) => setCollectionUpload({ ...collectionUpload, dueDate: event.target.value })} /></label><label className="user-form-field">Valor<input required type="number" min="0.01" step="0.01" value={collectionUpload.value} onChange={(event) => setCollectionUpload({ ...collectionUpload, value: event.target.value })} /></label></div><label className="user-form-field">Descrição<textarea required value={collectionUpload.description} onChange={(event) => setCollectionUpload({ ...collectionUpload, description: event.target.value })} /></label><label className="user-form-field">Comprovante<input type="file" accept="application/pdf,image/*" onChange={(event) => setCollectionUpload({ ...collectionUpload, file: event.target.files?.[0] || null })} /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setCollectionUploadOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary"><Upload size={16} /> Salvar cobrança</button></div></form></div>}
+                  {collectionUploadOpen && <div className="user-form-overlay" onClick={() => setCollectionUploadOpen(false)}><form className="collection-upload-modal" onSubmit={handleCollectionUpload} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Nova cobrança</h3><button type="button" onClick={() => setCollectionUploadOpen(false)} aria-label="Fechar"><X size={20} /></button></div><div className="collection-upload-content"><label className="user-form-field">Motorista<input autoFocus required value={collectionUpload.driver} onChange={(event) => setCollectionUpload({ ...collectionUpload, driver: event.target.value })} placeholder="Digite o nome do motorista" /></label><label className="user-form-field">Tipo<select value={collectionUpload.type} onChange={(event) => setCollectionUpload({ ...collectionUpload, type: event.target.value })}><option>Aluguel</option><option>Multa</option><option>Taxa</option><option>Manutenção</option><option>Outro</option></select></label><div className="user-form-row"><label className="user-form-field">Vencimento<input required type="date" value={collectionUpload.dueDate} onChange={(event) => setCollectionUpload({ ...collectionUpload, dueDate: event.target.value })} /></label><label className="user-form-field">Valor<input required type="number" min="0.01" step="0.01" value={collectionUpload.value} onChange={(event) => setCollectionUpload({ ...collectionUpload, value: event.target.value })} /></label></div><label className="user-form-field">Descrição<textarea required value={collectionUpload.description} onChange={(event) => setCollectionUpload({ ...collectionUpload, description: event.target.value })} /></label><label className="user-form-field">Comprovante<input type="file" accept="application/pdf,image/*" onChange={(event) => setCollectionUpload({ ...collectionUpload, file: event.target.files?.[0] || null })} /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={() => setCollectionUploadOpen(false)}>Cancelar</button><button type="submit" className="btn btn-primary"><Upload size={16} /> Salvar cobrança</button></div></form></div>}
                 </div>
               )}
-
-              {activeTab === 'support' && <SupportTab requests={supportRequests} visibleRequests={visibleSupportRequests} formOpen={supportFormOpen} form={supportForm} search={supportSearch} statusFilter={supportStatusFilter} typeFilter={supportTypeFilter} vehicles={vehicles} rentals={rentals} driverName={driverFormData.name} setFormOpen={setSupportFormOpen} setForm={setSupportForm} setSearch={setSupportSearch} setStatusFilter={setSupportStatusFilter} setTypeFilter={setSupportTypeFilter} closeForm={closeSupportForm} submitForm={handleSupportSubmit} selectVehicle={handleSupportVehicleChange} selectAttachment={handleSupportAttachment} onStatusChange={handleSupportStatusChange} />}
-
               {activeTab === 'interested' && (
                 <div className="tab-pane interested-tab-pane">
                   <div className="dashboard-header-bar users-topbar">
@@ -3536,7 +3579,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                     <option>Recusado</option>
                   </select>
 
-                  {(proposals.length === 0) ? (
+                  {(visibleProposals.length === 0) ? (
                     <div className="interested-empty-state">
                       <Inbox size={28} />
                       <h3>Nenhum interessado por enquanto</h3>
@@ -3544,8 +3587,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                     </div>
                   ) : (
                     <div className="interested-cards-grid">
-                      {proposals
-                        .filter((lead) => interestedStatusFilter === 'Todos os status' || lead.status === interestedStatusFilter)
+                      {visibleProposals
                         .map((lead) => {
                           const status = lead.status || 'Novo';
                           const initials = (lead.fullName || 'C')
@@ -3611,7 +3653,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                                     handleProposalStatus(lead.id, 'Arquivado');
                                   }}
                                 >
-                                  🗑
+                                  ðŸ—‘
                                 </button>
                               </div>
                             </article>
@@ -3646,7 +3688,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <section className="fines-list-card">
                     {visibleFines.length ? <div className="users-table-scroll"><table className="fines-table"><thead><tr><th>Auto de infração</th><th>Veículo</th><th>Tipo</th><th>Vencimento</th><th>Valor</th><th>Status</th><th /></tr></thead><tbody>{visibleFines.map((fine) => <tr key={fine.id}><td><strong>{fine.notice}</strong><small>{fine.authority}</small></td><td><strong>{fine.vehicleName}</strong><small>{fine.plate || '—'}</small></td><td><span className="fine-type-tag"><BadgeAlert size={13} /> {fine.type}</span></td><td>{fine.dueDate || '—'}</td><td className="fine-value">{formatCurrency(fine.value)}</td><td><span className={`fine-status ${fine.status.toLowerCase()}`}>{fine.status}</span></td><td><button className="rental-menu-trigger" aria-label="Ações"><MoreVertical size={18} /></button></td></tr>)}</tbody></table></div> : <div className="fines-empty-state"><BadgeAlert size={28} /><h3>Nenhuma multa cadastrada</h3><p>As infrações registradas para os veículos aparecerão aqui.</p></div>}
                   </section>
-                  {fineFormOpen && <div className="user-form-overlay" onClick={closeFineForm}><form className="fine-form-modal" onSubmit={handleFineSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Registrar Multa</h3><button type="button" onClick={closeFineForm} aria-label="Fechar"><X size={20} /></button></div><div className="fine-form-content"><h4><BadgeAlert size={16} /> Dados da multa</h4><label className="user-form-field full">Número do Auto de Infração *<input required value={fineForm.notice} onChange={(event) => setFineForm({ ...fineForm, notice: event.target.value })} placeholder="Ex.: AI202600012345" /></label><div className="user-form-row"><label className="user-form-field">Veículo *<select required value={fineForm.vehicle} onChange={(event) => setFineForm({ ...fineForm, vehicle: event.target.value })}><option value="">Selecione o veículo</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.brand} {vehicle.name}</option>)}</select></label><label className="user-form-field">Placa<input value={fineForm.plate} onChange={(event) => setFineForm({ ...fineForm, plate: event.target.value })} placeholder="ABC-1D23" /></label></div><div className="user-form-row"><label className="user-form-field">Órgão autuador<select value={fineForm.authority} onChange={(event) => setFineForm({ ...fineForm, authority: event.target.value })}><option>DETRAN</option><option>DER</option><option>PRF</option><option>Prefeitura</option></select></label><label className="user-form-field">Tipo de infração *<select value={fineForm.type} onChange={(event) => setFineForm({ ...fineForm, type: event.target.value })}><option>Excesso de velocidade</option><option>Estacionamento irregular</option><option>Avanço de sinal vermelho</option><option>Uso de celular</option><option>Outra</option></select></label></div><div className="user-form-row"><label className="user-form-field">Data da infração *<input required type="date" value={fineForm.date} onChange={(event) => setFineForm({ ...fineForm, date: event.target.value })} /></label><label className="user-form-field">Hora<input type="time" value={fineForm.time} onChange={(event) => setFineForm({ ...fineForm, time: event.target.value })} /></label></div><label className="user-form-field full">Local da infração<input value={fineForm.location} onChange={(event) => setFineForm({ ...fineForm, location: event.target.value })} placeholder="Ex.: Av. Paulista, 1000 – São Paulo/SP" /></label><label className="user-form-field full">Descrição<textarea value={fineForm.description} onChange={(event) => setFineForm({ ...fineForm, description: event.target.value })} placeholder="Descrição da infração..." /></label><div className="user-form-row"><label className="user-form-field">Valor da multa (R$) *<input required type="number" min="0" step="0.01" value={fineForm.value} onChange={(event) => setFineForm({ ...fineForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Data de vencimento *<input required type="date" value={fineForm.dueDate} onChange={(event) => setFineForm({ ...fineForm, dueDate: event.target.value })} /></label></div><h4><CircleDollarSign size={16} /> Pagamento</h4><label className="user-form-field full">Situação<select value={fineForm.status} onChange={(event) => setFineForm({ ...fineForm, status: event.target.value })}><option>Pendente</option><option>Paga</option><option>Vencida</option><option>Cancelada</option></select></label><label className="fine-check"><input type="checkbox" checked={fineForm.chargeDriver} onChange={(event) => setFineForm({ ...fineForm, chargeDriver: event.target.checked })} /> Gerar cobrança vinculada à multa</label><h4><Upload size={16} /> Documentos da infração</h4><label className="fine-upload"><Upload size={22} /><strong>Arraste o arquivo aqui ou clique para selecionar</strong><span>Auto de infração, notificação ou comprovante — PDF, JPG ou PNG</span><input type="file" accept="application/pdf,image/*" onChange={(event) => setFineForm({ ...fineForm, document: event.target.files?.[0] || null })} /></label><label className="user-form-field full">Observações<textarea value={fineForm.notes} onChange={(event) => setFineForm({ ...fineForm, notes: event.target.value })} placeholder="Anotações adicionais..." /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={closeFineForm}>Cancelar</button><button type="submit" className="btn btn-primary">Registrar</button></div></form></div>}
+                  {fineFormOpen && <div className="user-form-overlay" onClick={closeFineForm}><form className="fine-form-modal" onSubmit={handleFineSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Registrar Multa</h3><button type="button" onClick={closeFineForm} aria-label="Fechar"><X size={20} /></button></div><div className="fine-form-content"><h4><BadgeAlert size={16} /> Dados da multa</h4><label className="user-form-field full">Número do Auto de Infração *<input required value={fineForm.notice} onChange={(event) => setFineForm({ ...fineForm, notice: event.target.value })} placeholder="Ex.: AI202600012345" /></label><div className="user-form-row"><label className="user-form-field">Veículo *<input required value={fineForm.vehicle} onChange={(event) => setFineForm({ ...fineForm, vehicle: event.target.value })} placeholder="Digite o veículo" /></label><label className="user-form-field">Placa<input value={fineForm.plate} onChange={(event) => setFineForm({ ...fineForm, plate: event.target.value })} placeholder="ABC-1D23" /></label></div><div className="user-form-row"><label className="user-form-field">Órgão autuador<select value={fineForm.authority} onChange={(event) => setFineForm({ ...fineForm, authority: event.target.value })}><option>DETRAN</option><option>DER</option><option>PRF</option><option>Prefeitura</option></select></label><label className="user-form-field">Tipo de infração *<select value={fineForm.type} onChange={(event) => setFineForm({ ...fineForm, type: event.target.value })}><option>Excesso de velocidade</option><option>Estacionamento irregular</option><option>Avanço de sinal vermelho</option><option>Uso de celular</option><option>Outra</option></select></label></div><div className="user-form-row"><label className="user-form-field">Data da infração *<input required type="date" value={fineForm.date} onChange={(event) => setFineForm({ ...fineForm, date: event.target.value })} /></label><label className="user-form-field">Hora<input type="time" value={fineForm.time} onChange={(event) => setFineForm({ ...fineForm, time: event.target.value })} /></label></div><label className="user-form-field full">Local da infração<input value={fineForm.location} onChange={(event) => setFineForm({ ...fineForm, location: event.target.value })} placeholder="Ex.: Av. Paulista, 1000 – São Paulo/SP" /></label><label className="user-form-field full">Descrição<textarea value={fineForm.description} onChange={(event) => setFineForm({ ...fineForm, description: event.target.value })} placeholder="Descrição da infração..." /></label><div className="user-form-row"><label className="user-form-field">Valor da multa (R$) *<input required type="number" min="0" step="0.01" value={fineForm.value} onChange={(event) => setFineForm({ ...fineForm, value: event.target.value })} placeholder="0" /></label><label className="user-form-field">Data de vencimento *<input required type="date" value={fineForm.dueDate} onChange={(event) => setFineForm({ ...fineForm, dueDate: event.target.value })} /></label></div><h4><CircleDollarSign size={16} /> Pagamento</h4><label className="user-form-field full">Situação<select value={fineForm.status} onChange={(event) => setFineForm({ ...fineForm, status: event.target.value })}><option>Pendente</option><option>Paga</option><option>Vencida</option><option>Cancelada</option></select></label><label className="fine-check"><input type="checkbox" checked={fineForm.chargeDriver} onChange={(event) => setFineForm({ ...fineForm, chargeDriver: event.target.checked })} /> Gerar cobrança vinculada à multa</label><h4><Upload size={16} /> Documentos da infração</h4><label className="fine-upload"><Upload size={22} /><strong>Arraste o arquivo aqui ou clique para selecionar</strong><span>Auto de infração, notificação ou comprovante — PDF, JPG ou PNG</span><input type="file" accept="application/pdf,image/*" onChange={(event) => setFineForm({ ...fineForm, document: event.target.files?.[0] || null })} /></label><label className="user-form-field full">Observações<textarea value={fineForm.notes} onChange={(event) => setFineForm({ ...fineForm, notes: event.target.value })} placeholder="Anotações adicionais..." /></label></div><div className="user-form-actions"><button type="button" className="btn btn-secondary" onClick={closeFineForm}>Cancelar</button><button type="submit" className="btn btn-primary">Registrar</button></div></form></div>}
                 </div>
               )}
 
@@ -3658,7 +3700,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                   <div className="incidents-toolbar"><div className="users-filter incidents-search"><Search size={16} /><input value={incidentSearch} onChange={(event) => setIncidentSearch(event.target.value)} placeholder="Buscar por protocolo, veículo, placa ou motorista..." /></div><select value={incidentStatusFilter} onChange={(event) => setIncidentStatusFilter(event.target.value)}><option>Todos os status</option><option>Aberto</option><option>Em análise</option><option>Aguardando documentação</option><option>Em reparo</option><option>Resolvido</option><option>Cancelado</option></select><button className="btn btn-secondary btn-sm" onClick={exportIncidents}><Download size={16} /> Exportar CSV</button></div>
                   <section className="incidents-list-card">{visibleIncidents.length ? <div className="users-table-scroll"><table className="incidents-table"><thead><tr><th>Protocolo</th><th>Veículo</th><th>Motorista</th><th>Tipo</th><th>Data</th><th>Responsabilidade</th><th>Status</th><th /></tr></thead><tbody>{visibleIncidents.map((incident) => <tr key={incident.id}><td><strong>{incident.protocol}</strong><small>{incident.rental || '—'}</small></td><td><strong>{incident.vehicleName}</strong><small>{incident.plate || '—'}</small></td><td>{incident.driver || '—'}</td><td><span className="incident-type-tag"><AlertTriangle size={13} /> {incident.type}</span></td><td>{incident.formattedDate}</td><td>{incident.responsibility}</td><td><span className={`incident-status ${incident.status.toLocaleLowerCase().replace(' ', '-')}`}>{incident.status}</span></td><td className="incident-actions"><button className="rental-menu-trigger" onClick={() => setOpenIncidentMenu(openIncidentMenu === incident.id ? null : incident.id)} aria-label="Ações"><MoreVertical size={18} /></button>{openIncidentMenu === incident.id && <div className="rental-actions-menu"><button onClick={() => { setSelectedIncident(incident); setOpenIncidentMenu(null); }}>Ver detalhes</button><button onClick={() => openIncidentEdit(incident)}>Editar</button><button onClick={() => updateIncidentStatus(incident.id, 'Resolvido')}>Marcar como resolvido</button><button onClick={() => updateIncidentStatus(incident.id, 'Cancelado')}>Cancelar</button><button className="inspection-delete-action" onClick={() => deleteIncident(incident.id)}>Excluir</button></div>}</td></tr>)}</tbody></table></div> : <div className="incidents-empty-state"><AlertTriangle size={28} /><h3>Nenhum sinistro cadastrado</h3><p>Os acidentes, furtos e ocorrências registrados aparecerão aqui.</p></div>}</section>
                   {incidentFormOpen && <div className="user-form-overlay" onClick={closeIncidentForm}><form className="incident-form-modal" onSubmit={handleIncidentSubmit} onClick={(event) => event.stopPropagation()}><div className="user-form-header"><h3>Registrar Sinistro</h3><button type="button" onClick={closeIncidentForm} aria-label="Fechar"><X size={20} /></button></div><div className="incident-steps">{['Identificação', 'Ocorrência', 'Danos', 'Fotos & Docs', 'Seguro & Custos'].map((label, index) => { const step = index + 1; return <React.Fragment key={label}><span className={step < incidentStep ? 'completed' : step === incidentStep ? 'active' : ''}>{step < incidentStep ? <Check size={14} /> : step}</span><b className={step === incidentStep ? 'active-label' : ''}>{label}</b>{step < 5 && <i className={step < incidentStep ? 'completed-line' : ''} />}</React.Fragment>; })}</div><div className="incident-form-content">
-                    {incidentStep === 1 && <><label className="user-form-field full">Número do protocolo *<input required value={incidentForm.protocol} onChange={(event) => setIncidentForm({ ...incidentForm, protocol: event.target.value })} /></label><div className="user-form-row"><label className="user-form-field">Veículo *<select required value={incidentForm.vehicle} onChange={(event) => handleIncidentVehicleChange(event.target.value)}><option value="">Selecione o veículo</option>{vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.brand} {vehicle.name}</option>)}</select></label><label className="user-form-field">Placa<input value={incidentForm.plate} onChange={(event) => setIncidentForm({ ...incidentForm, plate: event.target.value })} placeholder="ABC-1D23" /></label></div><div className="user-form-row"><label className="user-form-field">Motorista responsável *<select required value={incidentForm.driver} onChange={(event) => setIncidentForm({ ...incidentForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{driverFormData.name && <option value={driverFormData.name}>{driverFormData.name}</option>}</select></label><label className="user-form-field">Locação relacionada<select value={incidentForm.rental} onChange={(event) => setIncidentForm({ ...incidentForm, rental: event.target.value })}><option value="">Nenhuma</option>{rentals.map((rental) => <option key={rental.id} value={`${rental.driver} — ${rental.vehicle}`}>{rental.driver} — {rental.vehicle}</option>)}</select></label></div><div className="user-form-row"><label className="user-form-field">Data do sinistro *<input required type="date" value={incidentForm.date} onChange={(event) => setIncidentForm({ ...incidentForm, date: event.target.value })} /></label><label className="user-form-field">Hora<input type="time" value={incidentForm.time} onChange={(event) => setIncidentForm({ ...incidentForm, time: event.target.value })} /></label></div><label className="user-form-field full">Local do sinistro *<input required value={incidentForm.location} onChange={(event) => setIncidentForm({ ...incidentForm, location: event.target.value })} placeholder="Ex.: Av. Paulista, 1000 – São Paulo/SP" /></label></>}
+                    {incidentStep === 1 && <><label className="user-form-field full">Número do protocolo *<input required value={incidentForm.protocol} onChange={(event) => setIncidentForm({ ...incidentForm, protocol: event.target.value })} /></label><div className="user-form-row"><label className="user-form-field">Veículo *<input required value={incidentForm.vehicle} onChange={(event) => setIncidentForm({ ...incidentForm, vehicle: event.target.value })} placeholder="Digite o veículo" /></label><label className="user-form-field">Placa<input value={incidentForm.plate} onChange={(event) => setIncidentForm({ ...incidentForm, plate: event.target.value })} placeholder="ABC-1D23" /></label></div><div className="user-form-row"><label className="user-form-field">Motorista responsável *<select required value={incidentForm.driver} onChange={(event) => setIncidentForm({ ...incidentForm, driver: event.target.value })}><option value="">Selecione o motorista</option>{driverFormData.name && <option value={driverFormData.name}>{driverFormData.name}</option>}</select></label><label className="user-form-field">Locação relacionada<select value={incidentForm.rental} onChange={(event) => setIncidentForm({ ...incidentForm, rental: event.target.value })}><option value="">Nenhuma</option>{rentals.map((rental) => <option key={rental.id} value={`${rental.driver} — ${rental.vehicle}`}>{rental.driver} — {rental.vehicle}</option>)}</select></label></div><div className="user-form-row"><label className="user-form-field">Data do sinistro *<input required type="date" value={incidentForm.date} onChange={(event) => setIncidentForm({ ...incidentForm, date: event.target.value })} /></label><label className="user-form-field">Hora<input type="time" value={incidentForm.time} onChange={(event) => setIncidentForm({ ...incidentForm, time: event.target.value })} /></label></div><label className="user-form-field full">Local do sinistro *<input required value={incidentForm.location} onChange={(event) => setIncidentForm({ ...incidentForm, location: event.target.value })} placeholder="Ex.: Av. Paulista, 1000 – São Paulo/SP" /></label></>}
                     {incidentStep === 2 && <><label className="user-form-field full">Tipo de ocorrência *<select value={incidentForm.type} onChange={(event) => setIncidentForm({ ...incidentForm, type: event.target.value })}><option>Colisão</option><option>Batida</option><option>Furto</option><option>Roubo</option><option>Incêndio</option><option>Alagamento</option><option>Vandalismo</option><option>Queda</option><option>Danos por terceiros</option><option>Outros</option></select></label><label className="user-form-field full">Descrição da ocorrência *<textarea required value={incidentForm.occurrenceDescription} onChange={(event) => setIncidentForm({ ...incidentForm, occurrenceDescription: event.target.value })} placeholder="Descreva o que aconteceu..." /></label><label className="user-form-field full">Status do sinistro<select value={incidentForm.status} onChange={(event) => setIncidentForm({ ...incidentForm, status: event.target.value })}><option>Aberto</option><option>Em análise</option><option>Aguardando documentação</option><option>Em reparo</option><option>Resolvido</option><option>Cancelado</option></select></label></>}
                     {incidentStep === 3 && <><p className="incident-question">Houve danos no veículo?</p><div className="incident-choice-row"><button type="button" className={incidentForm.hasDamage === true ? 'selected danger' : ''} onClick={() => setIncidentForm({ ...incidentForm, hasDamage: true })}>Sim, houve danos</button><button type="button" className={incidentForm.hasDamage === false ? 'selected safe' : ''} onClick={() => setIncidentForm({ ...incidentForm, hasDamage: false, damageLocations: [], damageDescription: '' })}>Não houve danos</button></div>{incidentForm.hasDamage && <><p className="incident-field-label">Local dos danos</p><div className="damage-location-grid">{['Frente', 'Traseira', 'Lateral direita', 'Lateral esquerda', 'Teto', 'Para-brisa', 'Vidros', 'Rodas', 'Motor', 'Interior', 'Outros'].map((location) => <label key={location}><input type="checkbox" checked={incidentForm.damageLocations.includes(location)} onChange={() => toggleIncidentDamageLocation(location)} />{location}</label>)}</div><label className="user-form-field full">Descrição dos danos<textarea value={incidentForm.damageDescription} onChange={(event) => setIncidentForm({ ...incidentForm, damageDescription: event.target.value })} placeholder="Ex: Para-choque dianteiro danificado. Farol direito quebrado..." /></label></>}</>}
                     {incidentStep === 4 && <><h4><Camera size={16} /> Fotos do sinistro</h4><div className="incident-photos-grid">{incidentForm.photos.map((photo, index) => <label key={index}><span>Foto {index + 1}</span><div className={photo ? 'has-file' : ''}>{photo?.preview ? <img src={photo.preview} alt={`Prévia da foto ${index + 1}`} /> : <Upload size={21} />}<strong>{photo ? photo.file.name : 'Clique para tirar/enviar foto'}</strong></div><input type="file" accept="image/*" onChange={(event) => handleIncidentPhoto(index, event.target.files?.[0] || null)} /></label>)}</div><h4><FileText size={16} /> Documentos</h4><label className="incident-document-upload"><Upload size={23} /><strong>{incidentForm.documents.length ? `${incidentForm.documents.length} documento(s) selecionado(s)` : 'Adicionar documento'}</strong><span>BO, documento da seguradora, orçamento — PDF, JPG ou PNG</span><input type="file" multiple accept="application/pdf,image/*" onChange={(event) => setIncidentForm({ ...incidentForm, documents: Array.from(event.target.files || []) })} /></label>{incidentForm.documents.length > 0 && <div className="incident-documents-list">{incidentForm.documents.map((document) => <span key={`${document.name}-${document.lastModified}`}><FileText size={14} /> {document.name}</span>)}</div>}</>}
@@ -3686,7 +3728,7 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
                           </tr>
                         </thead>
                         <tbody>
-                          {proposals.map(lead => (
+                          {visibleProposals.map(lead => (
                             <tr 
                               key={lead.id} 
                               className={`proposal-row-item ${selectedProposal?.id === lead.id ? 'selected-row' : ''}`}
@@ -3802,6 +3844,10 @@ export default function AdminModal({ isOpen, onClose, supportRequests, setSuppor
     </div>
   );
 }
+
+
+
+
 
 
 

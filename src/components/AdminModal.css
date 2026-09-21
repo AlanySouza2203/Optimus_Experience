@@ -374,6 +374,8 @@
   display: none;
 }
 
+.mobile-admin-menu-toggle { display: none; }
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -822,6 +824,7 @@
   gap: 0.8rem;
   height: 200px;
   padding-top: 0.8rem;
+  overflow: hidden;
 }
 
 .bar-group {
@@ -1091,6 +1094,10 @@
 .collections-table th { padding: 0.8rem 1.2rem; color: #5b7198; background: #fbfcfe; border-bottom: 1px solid #dfe6ee; font-size: 0.75rem; font-weight: 600; }
 .collections-table td { padding: 0.9rem 1.2rem; border-bottom: 1px solid #edf1f6; color: #425b80; font-size: 0.84rem; }
 .collections-table tr:last-child td { border-bottom: 0; }
+.collections-table details { position: relative; display: inline-block; }
+.collections-table summary { cursor: pointer; color: #425b80; list-style: none; }
+.collections-table summary::-webkit-details-marker { display: none; }
+.collections-table details > .rental-actions-menu { top: calc(100% + 0.35rem); right: 0; }
 .collections-table .collection-driver, .collections-table .collection-value { color: #0f172a; font-weight: 700; }
 .collections-table .collection-date { color: #5b7198; }
 .collection-status { display: inline-block; padding: 0.22rem 0.62rem; border-radius: 999px; font-size: 0.72rem; font-weight: 700; }
@@ -2173,7 +2180,7 @@
     width: 100%;
     border-right: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 1.25rem;
+    padding: 0.45rem 0.6rem;
   }
   .sidebar-brand {
     margin-bottom: 1rem;
@@ -2181,12 +2188,26 @@
   .sidebar-user-info {
     display: none;
   }
-  .sidebar-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+  .sidebar-brand,
+  .sidebar-user-mini { display: none; }
+  .mobile-admin-menu-toggle {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.55rem;
+    border: 0;
+    border-radius: 8px;
+    padding: 0.65rem 0.75rem;
+    background: #0b1320;
+    color: #fff;
+    font: 600 0.85rem var(--font-family);
+    cursor: pointer;
   }
+  .sidebar-nav { display: none; margin-top: 0.45rem; }
+  .sidebar-nav.is-open { display: flex; flex-direction: column; gap: 0.2rem; max-height: 50vh; overflow-y: auto; }
+  .sidebar-section { flex: 0 0 auto; flex-direction: column; }
+  .section-label { display: none; }
+  .nav-item-btn { width: 100%; white-space: nowrap; padding: 0.6rem 0.7rem; }
   .sidebar-footer-info {
     flex-direction: row;
     align-items: center;

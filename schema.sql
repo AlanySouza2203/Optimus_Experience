@@ -114,27 +114,6 @@ CREATE TABLE IF NOT EXISTS reservations (
   FOREIGN KEY (plan_id) REFERENCES plans(id) ON DELETE RESTRICT
 );
 
-CREATE TABLE IF NOT EXISTS payments (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  client_id INT NULL,
-  contract_id INT NULL,
-  reservation_id INT NULL,
-  driver_name VARCHAR(120) DEFAULT '',
-  driver_phone VARCHAR(40) DEFAULT '',
-  driver_email VARCHAR(120) DEFAULT '',
-  contract_number VARCHAR(80) DEFAULT '',
-  amount DECIMAL(10, 2) NOT NULL,
-  due_date DATE NOT NULL,
-  paid_at DATETIME NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'pendente',
-  method VARCHAR(40) NOT NULL DEFAULT 'pix',
-  external_reference VARCHAR(120) DEFAULT '',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
-  FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE SET NULL,
-  FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
-);
-
 CREATE TABLE IF NOT EXISTS support_requests (
   id INT AUTO_INCREMENT PRIMARY KEY,
   driver_id INT NULL,
@@ -220,6 +199,9 @@ CREATE TABLE IF NOT EXISTS contracts (
   client_id INT NULL,
   driver_id INT NULL,
   vehicle_id INT NULL,
+  client_name VARCHAR(120) DEFAULT '',
+  vehicle_name VARCHAR(160) DEFAULT '',
+  attachment_name VARCHAR(180) DEFAULT '',
   plan VARCHAR(50) DEFAULT '',
   total_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   deposit_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
@@ -230,6 +212,27 @@ CREATE TABLE IF NOT EXISTS contracts (
   FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
   FOREIGN KEY (driver_id) REFERENCES drivers(id) ON DELETE SET NULL,
   FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS payments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  client_id INT NULL,
+  contract_id INT NULL,
+  reservation_id INT NULL,
+  driver_name VARCHAR(120) DEFAULT '',
+  driver_phone VARCHAR(40) DEFAULT '',
+  driver_email VARCHAR(120) DEFAULT '',
+  contract_number VARCHAR(80) DEFAULT '',
+  amount DECIMAL(10, 2) NOT NULL,
+  due_date DATE NOT NULL,
+  paid_at DATETIME NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'pendente',
+  method VARCHAR(40) NOT NULL DEFAULT 'pix',
+  external_reference VARCHAR(120) DEFAULT '',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL,
+  FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE SET NULL,
+  FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS inspections (
@@ -248,6 +251,7 @@ CREATE TABLE IF NOT EXISTS inspections (
 
 CREATE TABLE IF NOT EXISTS cash_entries (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  payment_id INT NULL UNIQUE,
   entry_type VARCHAR(20) NOT NULL,
   entry_date DATE NOT NULL,
   description VARCHAR(255) NOT NULL,
@@ -255,7 +259,8 @@ CREATE TABLE IF NOT EXISTS cash_entries (
   amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   status VARCHAR(30) NOT NULL DEFAULT 'Pendente',
   notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS collection_charges (

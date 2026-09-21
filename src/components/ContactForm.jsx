@@ -2,7 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Send, CheckCircle2, Phone, Mail, MapPin } from 'lucide-react';
 import './ContactForm.css';
 
+const defaultVehicles = [
+  { id: 1, brand: 'CHEVROLET', name: 'Onix Plus', category: 'Econômico', priceWeekly: 799, status: 'Disponível' },
+  { id: 2, brand: 'CHEVROLET', name: 'Onix', category: 'Econômico', priceWeekly: 749, status: 'Disponível' },
+  { id: 3, brand: 'FIAT', name: 'Argo Drive', category: 'Econômico', priceWeekly: 729, status: 'Disponível' },
+  { id: 4, brand: 'VOLKSWAGEN', name: 'Polo Track', category: 'Econômico', priceWeekly: 499, status: 'Disponível' },
+  { id: 5, brand: 'HYUNDAI', name: 'HB20', category: 'Econômico', priceWeekly: 749, status: 'Disponível' },
+  { id: 6, brand: 'FIAT', name: 'Cronos Drive', category: 'Sedan', priceWeekly: 829, status: 'Disponível' },
+  { id: 7, brand: 'HYUNDAI', name: 'HB20S', category: 'Sedan', priceWeekly: 829, status: 'Disponível' },
+  { id: 8, brand: 'VOLKSWAGEN', name: 'Virtus (Automático)', category: 'Sedan', priceWeekly: 850, status: 'Disponível' },
+  { id: 9, brand: 'VOLKSWAGEN', name: 'Virtus (Manual)', category: 'Sedan', priceWeekly: 899, status: 'Disponível' },
+  { id: 10, brand: 'RENAULT', name: 'Kwid E-Tech', category: 'Hatch', priceWeekly: 599, status: 'Disponível' },
+  { id: 11, brand: 'RENAULT', name: 'Logan', category: 'Sedan', priceWeekly: 519, status: 'Disponível' },
+  { id: 12, brand: 'NISSAN', name: 'Kicks', category: 'SUV', priceWeekly: 849, status: 'Disponível' },
+  { id: 13, brand: 'TOYOTA', name: 'Yaris Hatch', category: 'Hatch', priceWeekly: 765, status: 'Disponível' }
+];
+
 export default function ContactForm({ onLeadSubmit }) {
+  const [vehicles, setVehicles] = useState(defaultVehicles);
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -10,14 +27,14 @@ export default function ContactForm({ onLeadSubmit }) {
     city: '',
     hasCNH: 'sim-definitiva',
     cnhCategory: 'B',
-    vehicleModel: '',
+    vehicleModel: `${defaultVehicles[0].brand} ${defaultVehicles[0].name}`,
+    vehicleId: defaultVehicles[0].id,
     planType: 'Semanal',
     appPlatform: 'Uber',
     contactTime: 'Qualquer Horário',
     message: ''
   });
 
-  const [vehicles, setVehicles] = useState([]);
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -25,16 +42,18 @@ export default function ContactForm({ onLeadSubmit }) {
     fetch('/api/vehicles')
       .then(async (res) => {
         const data = await res.json().catch(() => []);
-        const vehicleList = Array.isArray(data) ? data : Array.isArray(data?.vehicles) ? data.vehicles : [];
+        const vehicleList = Array.isArray(data) && data.length > 0 ? data : Array.isArray(data?.vehicles) ? data.vehicles : defaultVehicles;
 
         if (vehicleList.length > 0) {
           setVehicles(vehicleList);
-          setFormData(prev => ({ ...prev, vehicleModel: `${vehicleList[0].brand} ${vehicleList[0].name}`, vehicleId: vehicleList[0].id }));
-        } else {
-          setVehicles([]);
+          setFormData(prev => ({
+            ...prev,
+            vehicleModel: prev.vehicleModel || `${vehicleList[0].brand} ${vehicleList[0].name}`,
+            vehicleId: prev.vehicleId || vehicleList[0].id
+          }));
         }
       })
-      .catch(() => setVehicles([]));
+      .catch(() => setVehicles(defaultVehicles));
   }, []);
 
   const handleChange = (e) => {
@@ -42,7 +61,7 @@ export default function ContactForm({ onLeadSubmit }) {
     setFormData(prev => {
       if (name !== 'vehicleModel') return { ...prev, [name]: value };
       const vehicle = vehicles.find((item) => `${item.brand} ${item.name}` === value);
-      return { ...prev, vehicleModel: value, vehicleId: vehicle?.id || '' };
+      return { ...prev, vehicleModel: value, vehicleId: vehicle?.id || prev.vehicleId || 1 };
     });
   };
 
@@ -50,21 +69,46 @@ export default function ContactForm({ onLeadSubmit }) {
     e.preventDefault();
     setLoading(true);
 
-    fetch('/api/proposals', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(formData)
-    })
-      .then(res => {
-        if (!res.ok) throw new Error('Erro ao enviar proposta');
-        return res.json();
-      })
+    const activeVehicle = vehicles.find((v) => `${v.brand} ${v.name}` === formData.vehicleModel) || vehicles[0] || defaultVehicles[0];
+
+    const payload = {
+      ...formData,
+      vehicleId: formData.vehicleId || activeVehicle.id,
+      vehicle_id: formData.vehicleId || activeVehicle.id,
+      vehicleModel: formData.vehicleModel || `${activeVehicle.brand} ${activeVehicle.name}`,
+      vehiclePriceWeekly: activeVehicle.priceWeekly || 0
+    };
+
+    const sendToBackend = async () => {
+      let res;
+      try {
+        res = await fetch('/api/proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (netErr) {
+        try {
+          res = await fetch('http://localhost:3001/api/proposals', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+        } catch (directErr) {
+          throw new Error('Não foi possível conectar ao servidor backend. Verifique se a API e o banco de dados estão em execução.');
+        }
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Erro ao salvar proposta no banco de dados');
+      return data;
+    };
+
+    sendToBackend()
       .then((data) => {
         if (onLeadSubmit) {
           onLeadSubmit({
-            ...formData,
+            ...payload,
             ...(data.proposal || {}),
             status: 'Novo',
             createdAt: new Date().toLocaleString('pt-BR')
@@ -76,7 +120,7 @@ export default function ContactForm({ onLeadSubmit }) {
       .catch(err => {
         console.error(err);
         setLoading(false);
-        alert('Não foi possível salvar seu interesse. O cadastro não foi concluído. Tente novamente.');
+        alert(err.message || 'Não foi possível salvar seu interesse no banco de dados. Tente novamente.');
       });
   };
 
@@ -88,8 +132,8 @@ export default function ContactForm({ onLeadSubmit }) {
       city: '',
       hasCNH: 'sim-definitiva',
       cnhCategory: 'B',
-      vehicleModel: vehicles[0] ? `${vehicles[0].brand} ${vehicles[0].name}` : '',
-      vehicleId: vehicles[0]?.id || '',
+      vehicleModel: `${vehicles[0]?.brand || 'CHEVROLET'} ${vehicles[0]?.name || 'Onix Plus'}`,
+      vehicleId: vehicles[0]?.id || 1,
       planType: 'Semanal',
       appPlatform: 'Uber',
       contactTime: 'Qualquer Horário',

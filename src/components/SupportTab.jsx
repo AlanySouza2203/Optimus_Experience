@@ -207,18 +207,7 @@ export default function SupportTab({
             <div className="support-form-content">
               <h4><UserCheck size={16} /> Identificação</h4>
               <div className="user-form-row">
-                <label className="user-form-field">Motorista *
-                  <select required value={form.driver} onChange={(event) => setForm({ ...form, driver: event.target.value })}>
-                    <option value="">Selecione o motorista</option>
-                    {driverName && <option value={driverName}>{driverName}</option>}
-                  </select>
-                </label>
-                <label className="user-form-field">Veículo *
-                  <select required value={form.vehicle} onChange={(event) => selectVehicle(event.target.value)}>
-                    <option value="">Selecione o veículo</option>
-                    {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.brand} {vehicle.name}</option>)}
-                  </select>
-                </label>
+                <label className="user-form-field">Motorista *<input required value={form.driver} onChange={(event) => setForm({ ...form, driver: event.target.value })} placeholder="Digite o nome do motorista" /></label><label className="user-form-field">Veículo *<input required value={form.vehicle} onChange={(event) => setForm({ ...form, vehicle: event.target.value })} placeholder="Digite o veículo" /></label>
               </div>
               <div className="user-form-row">
                 <label className="user-form-field">Placa

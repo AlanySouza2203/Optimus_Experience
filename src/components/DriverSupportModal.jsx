@@ -1,6 +1,8 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, CheckCircle2, CircleAlert, CircleHelp, Headphones, MapPin, Paperclip, Send, ShieldAlert, Wrench, X } from 'lucide-react';
 import './DriverSupportModal.css';
+
+const apiBaseUrl = import.meta.env.VITE_API_TARGET || 'http://localhost:3001';
 
 const CURRENT_VEHICLE = { name: 'Renault Kwid', plate: 'ABC-1D23' };
 const problemTypes = [
@@ -35,7 +37,7 @@ export default function DriverSupportModal({ isOpen, onClose, requests, onCreate
     };
 
     try {
-      const response = await fetch('/api/support', {
+      const response = await fetch(`${apiBaseUrl}/api/support`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
