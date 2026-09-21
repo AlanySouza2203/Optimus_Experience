@@ -194,7 +194,7 @@
 }
 
 .navbar-toggler {
-  display: none;
+  display: none !important;
   background: #F1F5F9;
   border: 1px solid #CBD5E1;
   padding: 0.5rem 0.75rem;
@@ -273,27 +273,14 @@
   width: 100%;
 }
 
-/* Strict Mobile Rules: Force hides ANY header elements except logo and navbar-toggler on <= 1280px */
-@media screen and (max-width: 1280px) {
-  .nav-menu,
-  .desktop-actions,
-  .desktop-only,
-  .nav-actions > *:not(.navbar-toggler),
-  .nav-actions button:not(.navbar-toggler),
-  .nav-actions .btn:not(.navbar-toggler),
-  header.navbar .desktop-actions,
-  header.navbar .nav-cta-btn,
-  header.navbar .btn-primary {
+/* Mobile Media Query Rules: Hide ALL desktop links and actions on <= 1024px */
+@media screen and (max-width: 1024px) {
+  .nav-menu {
     display: none !important;
-    visibility: hidden !important;
-    opacity: 0 !important;
-    width: 0 !important;
-    height: 0 !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: hidden !important;
-    position: absolute !important;
-    pointer-events: none !important;
+  }
+
+  .desktop-actions {
+    display: none !important;
   }
 
   .navbar-toggler {
