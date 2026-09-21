@@ -91,7 +91,7 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
 
         {/* Desktop Action Buttons */}
         <div className="nav-actions">
-          <div className="desktop-actions">
+          <div className="desktop-actions desktop-only">
             <button 
               className="btn btn-secondary btn-sm nav-login-btn"
               onClick={onOpenAdmin}

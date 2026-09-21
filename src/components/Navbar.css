@@ -170,6 +170,12 @@
   gap: 0.85rem;
 }
 
+.desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
 .btn-sm {
   padding: 0.65rem 1.25rem;
   font-size: 0.88rem;
@@ -267,19 +273,17 @@
   width: 100%;
 }
 
-.desktop-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
 /* Mobile Media Query Rules */
 @media (max-width: 1200px) {
   .nav-menu,
   .desktop-actions,
-  .nav-login-btn,
-  .nav-support-btn,
-  .nav-cta-btn {
+  .desktop-only,
+  .nav-actions .desktop-actions,
+  .nav-actions .nav-login-btn,
+  .nav-actions .nav-support-btn,
+  .nav-actions .nav-cta-btn,
+  header.navbar .desktop-actions,
+  header.navbar .nav-cta-btn {
     display: none !important;
   }
 
@@ -287,6 +291,3 @@
     display: flex !important;
   }
 }
-
-
-

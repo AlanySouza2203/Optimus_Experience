@@ -226,7 +226,10 @@ body {
     font-size: 1.6rem;
   }
 
-  .btn {
+  .hero-actions .btn,
+  .form-actions .btn,
+  .mobile-actions-grid .btn {
     width: 100%;
   }
 }
+
