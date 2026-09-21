@@ -273,19 +273,27 @@
   width: 100%;
 }
 
-/* Mobile Media Query Rules - Hides ALL desktop buttons on <= 1280px */
+/* Strict Mobile Rules: Force hides ANY header elements except logo and navbar-toggler on <= 1280px */
 @media screen and (max-width: 1280px) {
   .nav-menu,
   .desktop-actions,
   .desktop-only,
-  .nav-actions .desktop-actions,
-  .nav-actions .nav-login-btn,
-  .nav-actions .nav-support-btn,
-  .nav-actions .nav-cta-btn,
+  .nav-actions > *:not(.navbar-toggler),
+  .nav-actions button:not(.navbar-toggler),
+  .nav-actions .btn:not(.navbar-toggler),
   header.navbar .desktop-actions,
   header.navbar .nav-cta-btn,
   header.navbar .btn-primary {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+    pointer-events: none !important;
   }
 
   .navbar-toggler {
