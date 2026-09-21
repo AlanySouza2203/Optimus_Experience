@@ -595,6 +595,10 @@ async function ensureClientCatalogSeed() {
 
 async function initDb() {
   try {
+    const sslOption = (process.env.DB_SSL === 'true' || process.env.DB_SSL === '1' || process.env.DB_PORT === '4000') 
+      ? { minVersion: 'TLSv1.2', rejectUnauthorized: false } 
+      : undefined;
+
     pool = mysql.createPool({
       host: process.env.DB_HOST || 'localhost',
       port: Number(process.env.DB_PORT || 3306),
@@ -603,7 +607,8 @@ async function initDb() {
       database: process.env.DB_NAME || 'optimus_db',
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      ssl: sslOption
     });
 
     const conn = await pool.getConnection();
@@ -921,7 +926,8 @@ function normalizeSupportRequest(row) {
   };
 }
 
-initDb();
+const initDbPromise = initDb();
+export { initDbPromise, initDb, pool };
 
 app.get('/api/permissions', async (req, res) => {
   if (useFallback) return res.json(fallbackPermissions);
@@ -2640,7 +2646,7 @@ function startServer(port) {
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
       const nextPort = port + 1;
-      console.warn(`⚠ï¸ Port ${port} is already in use. Trying port ${nextPort}...`);
+      console.warn(`⚠ï¸  Port ${port} is already in use. Trying port ${nextPort}...`);
       startServer(nextPort);
       return;
     }
