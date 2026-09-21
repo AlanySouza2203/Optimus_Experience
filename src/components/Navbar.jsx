@@ -91,27 +91,29 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
 
         {/* Desktop Action Buttons */}
         <div className="nav-actions">
-          <button 
-            className="btn btn-secondary btn-sm nav-login-btn"
-            onClick={onOpenAdmin}
-          >
-            Área Administrativa
-          </button>
+          <div className="desktop-actions">
+            <button 
+              className="btn btn-secondary btn-sm nav-login-btn"
+              onClick={onOpenAdmin}
+            >
+              Área Administrativa
+            </button>
 
-          <button
-            className="btn btn-secondary btn-sm nav-support-btn"
-            onClick={onOpenDriverSupport}
-          >
-            <Headphones size={16} />
-            Suporte
-          </button>
-          
-          <button 
-            className="btn btn-primary btn-sm nav-cta-btn"
-            onClick={onOpenProposal}
-          >
-            <span>Solicitar proposta</span>
-          </button>
+            <button
+              className="btn btn-secondary btn-sm nav-support-btn"
+              onClick={onOpenDriverSupport}
+            >
+              <Headphones size={16} />
+              Suporte
+            </button>
+            
+            <button 
+              className="btn btn-primary btn-sm nav-cta-btn"
+              onClick={onOpenProposal}
+            >
+              <span>Solicitar proposta</span>
+            </button>
+          </div>
 
           {/* Mobile Toggler Button */}
           <button 

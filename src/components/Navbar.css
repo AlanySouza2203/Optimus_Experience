@@ -267,15 +267,16 @@
   width: 100%;
 }
 
+.desktop-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
 /* Mobile Media Query Rules */
 @media (max-width: 1024px) {
-  .nav-menu {
-    display: none !important;
-  }
-
-  .nav-actions .nav-login-btn,
-  .nav-actions .nav-support-btn,
-  .nav-actions .nav-cta-btn {
+  .nav-menu,
+  .desktop-actions {
     display: none !important;
   }
 
@@ -283,3 +284,4 @@
     display: flex !important;
   }
 }
+
