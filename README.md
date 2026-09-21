@@ -1,175 +1,274 @@
-# Optimus Experience
+# 🚗 Optimus Experience - Sistema de Gestão de Frota e Locadora de Veículos
 
-Sistema de gestão de frotas e locações voltado a locadoras e motoristas de aplicativo. A aplicação reúne o site institucional, captação de interessados e uma área administrativa para operação, financeiro, frota e atendimento.
+[![Vercel Deployment](https://img.shields.io/badge/Vercel-Online-brightgreen?style=for-the-badge&logo=vercel)](https://optimus-experience-zmr2.vercel.app/)
+[![TiDB Cloud](https://img.shields.io/badge/TiDB%20Cloud-MySQL%20Serverless-blue?style=for-the-badge&logo=singlestore)](https://tidbcloud.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express-green?style=for-the-badge&logo=node.js)](https://expressjs.com/)
 
-## Visão geral
+O **Optimus Experience** é uma plataforma web completa para gestão operacional, financeira e de frota de locadoras de veículos. O sistema permite controlar desde a captação de clientes interessados no site público até a vistoria, contratos, gestão financeira, manutenção e sinistros da frota.
 
-- Site público com catálogo de veículos, planos, propostas e suporte ao motorista.
-- Painel administrativo com indicadores, permissões por perfil e módulos operacionais.
-- API REST em Express com MySQL.
-- Modo de reserva local quando o MySQL não está disponível, útil para demonstração e desenvolvimento inicial.
-- Relatórios filtráveis por período, status, veículo, cliente e motorista.
+🌐 **Link da Aplicação em Produção**: [https://optimus-experience-zmr2.vercel.app/](https://optimus-experience-zmr2.vercel.app/)
 
-## Tecnologias
+---
 
-| Camada | Tecnologias |
-| --- | --- |
-| Frontend | React 19, Vite 8, CSS e Lucide React |
-| Backend | Node.js, Express, CORS e dotenv |
-| Banco de dados | MySQL 8+ com `mysql2` |
-| Qualidade | Oxlint |
+## 🛠️ Tecnologias Utilizadas
 
-## Módulos administrativos
+### **Frontend**
+- **React 19**: Interface reativa e moderna para usuário e painel administrativo.
+- **Vite 8**: Build tool ultra-rápida para desenvolvimento e produção.
+- **Lucide React**: Biblioteca de ícones modernos para a UI.
+- **CSS3 Puro**: Design Responsivo com variáveis de cores, animações e suporte a modo escuro/claro.
 
-| Área | Principais informações gerenciadas |
-| --- | --- |
-| Dashboard | Entradas, saídas, saldo, frota e alertas pendentes |
-| Pessoas | Usuários, clientes e motoristas |
-| Operação | Veículos, reservas, locações e contratos |
-| Financeiro | Cobranças, pagamentos e fluxo de caixa |
-| Frota | Manutenções, vistorias, multas e sinistros |
-| Atendimento | Suporte, interessados e notificações |
-| Sistema | Relatórios e configurações de perfis/permissões |
+### **Backend & Banco de Dados**
+- **Node.js & Express**: API RESTful adaptada para Serverless Functions na Vercel.
+- **mysql2/promise**: Driver MySQL com pool de conexões otimizado e tratamento de TLS/SSL.
+- **TiDB Cloud (MySQL Serverless)**: Banco de dados relacional distribuído, escalável e de alta disponibilidade hospedado na nuvem.
 
-## Pré-requisitos
+### **Hospedagem & Infraestrutura**
+- **Vercel**: Deploy automatizado com integração contínua (CI/CD), funções serverless em `/api` e suporte a SPA.
 
-- Node.js 20 ou superior
-- npm 10 ou superior
-- MySQL 8 ou superior para persistência em banco
+---
 
-## Instalação
+## 📋 Fluxo de Funções de Cada Área
 
-```bash
-git clone https://github.com/AlanySouza2203/Optimus_Experience.git
-cd Optimus_Experience
-npm install
+### 1. DASHBOARD
+- **O que faz**: Apresenta um resumo geral de toda a operação em uma única tela, com indicadores numéricos, gráficos e alertas.
+- **Funções disponíveis**:
+  - **Indicadores financeiros** (4 cartões no topo): Receita do mês, Despesas do mês, Lucro do período (receita menos despesas) e Taxa de ocupação (% de veículos em locação).
+  - **Indicadores operacionais** (8 cartões): Total de veículos, Disponíveis, Em locação, Em manutenção, Reservados, Contratos ativos, Cobranças pendentes (com valor total) e Cobranças vencidas (com valor total).
+  - **Gráfico de barras**: Comparativo de receitas e despesas dos últimos 7 meses, com dados interativos ao passar o mouse.
+  - **Gráfico circular**: Distribuição da frota por status.
+  - **Painel de alertas**: Listagem de pendências críticas (CNH vencendo, Contrato vencendo, Cobrança vencida, Manutenção programada, Documento vencendo e Nova solicitação de suporte).
+  - **Tabela de locações recentes**: Motorista, veículo, plano, período, valor e status.
+- **Como funciona o fluxo**: O usuário acessa o painel e cai diretamente no Dashboard. Os indicadores são calculados automaticamente a partir dos dados do banco. O usuário identifica pendências nos alertas e navega para as áreas correspondentes.
+
+---
+
+### 2. USUÁRIOS
+- **O que faz**: Gerencia os funcionários internos da locadora que possuem acesso ao painel administrativo.
+- **Funções disponíveis**: Buscar por nome ou e-mail, Exportar lista em CSV, Criar novo usuário, Editar usuário existente, Bloquear ou ativar usuário, Resetar senha e Excluir usuário.
+- **Como funciona o fluxo**: Exibe a lista com nome, cargo, perfil, status e data de cadastro.
+  - *Criar*: Clica em "Novo Usuário", preenche os dados e salva.
+  - *Editar*: Altera os campos cadastrais através do menu de ações.
+  - *Bloquear/Ativar*: Alterna a situação do usuário no sistema.
+  - *Resetar senha*: Gera uma senha temporária de acesso.
+- **Campos do formulário**: Nome completo, CPF, Telefone, E-mail, Cargo, Perfil (Administrador, Gestor, Atendente, Vistoriador), Status (Ativo, Inativo, Bloqueado) e Senha temporária.
+
+---
+
+### 3. MOTORISTAS
+- **O que faz**: Cadastra, analisa e aprova as pessoas autorizadas a dirigir os veículos da frota.
+- **Funções disponíveis**: Indicadores (Aprovados, Em análise, Bloqueados/Reprovados), Busca por nome ou CPF, Filtro por status, Exportação CSV, Ver detalhes completos, Aprovar motorista, Reprovar motorista, Bloquear motorista e Novo cadastro.
+- **Como funciona o fluxo**: O usuário visualiza indicadores no topo e pode filtrar a lista. Na janela "Ver detalhes", são exibidos: dados pessoais, CNH (categoria e validade), plataformas em que trabalha e documentos anexados (CNH, RG, CPF, Comprovante, Selfie).
+- **Regras de exibição de ações**:
+  - Se *Em análise*: exibe opções "Aprovar" e "Reprovar".
+  - Se *Aprovado*: exibe opção "Bloquear".
+  - Para todos: exibe "Ver detalhes".
+
+---
+
+### 4. VEÍCULOS
+- **O que faz**: Controla toda a frota da locadora, permitindo acompanhar a situação individual de cada veículo.
+- **Funções disponíveis**: Indicadores (Total, Disponíveis, Em locação, Indisponíveis), Busca por modelo/placa/código, Filtro por categoria (Econômico, Compacto, Sedan, SUV, Elétrico, Premium), Exportação CSV, Detalhes, Edição, Exclusão e Cadastro de novos veículos.
+- **Status dos Veículos**:
+  - **Disponível** (Verde): Pronto para locação.
+  - **Em locação** (Azul): Em uso pelo motorista.
+  - **Em manutenção** (Amarelo): Na oficina.
+  - **Reservado** (Violeta): Reservado para uma locação futura.
+  - **Bloqueado** (Vermelho): Indisponível para operação.
+
+---
+
+### 5. LOCAÇÕES
+- **O que faz**: Lista e controla os contratos de locação ativos, agendados e encerrados.
+- **Funções disponíveis**: Busca por motorista ou veículo, Exportação CSV, Ver detalhes, Encerrar locação, Cancelar locação e Criar nova locação.
+- **Status da locação**: *Ativa*, *Encerrada*, *Cancelada*, *Agendada*, *Em análise*.
+
+---
+
+### 6. COBRANÇAS
+- **O que faz**: Controla os valores a receber dos motoristas.
+- **Funções disponíveis**: Indicadores (Pago, Pendente, Vencido), Filtro por status, Exportação CSV, Ver detalhes, Marcar cobrança como paga e Criar nova cobrança.
+- **Regra de exibição**: Cobranças com status *Pendente* ou *Vencida* exibem a ação "Marcar como paga". Cobranças *Pagas* exibem apenas "Ver detalhes".
+
+---
+
+### 7. INTERESSADOS
+- **O que faz**: Recebe e acompanha as solicitações enviadas através do formulário do site público.
+- **Funções disponíveis**: Indicadores (Novos, Em contato, Convertidos, Arquivados), Filtros por status, Visualização detalhada de mensagens, Alteração de status para "Em contato", "Convertido" ou "Arquivado".
+- **Visualização**: Apresentados em formato de cartões individuais devido às mensagens descritivas do cliente.
+
+---
+
+### 8. CLIENTES
+- **O que faz**: Gerencia pessoas físicas (PF) e jurídicas (PJ) registradas na locadora.
+- **Funções disponíveis**: Indicadores (Total, PF, PJ), Busca por nome ou CPF/CNPJ, Filtro por tipo, Exportação CSV, Ver detalhes, Cadastro, Edição e Exclusão.
+- **Campos dinâmicos**: Alterna entre CPF/Nome (Pessoa Física) e CNPJ/Razão Social (Pessoa Jurídica).
+
+---
+
+### 9. RESERVAS
+- **O que faz**: Agenda a separação antecipada de um veículo para determinado cliente/motorista.
+- **Funções disponíveis**: Indicadores (Pendentes, Confirmadas, Canceladas), Busca, Filtro, Cadastro, Edição, Confirmação, Cancelamento e Exclusão.
+
+---
+
+### 10. CONTRATOS
+- **O que faz**: Formaliza a locação com cláusulas, vigência, plano, caução e arquivo PDF anexado.
+- **Funções disponíveis**: Indicadores (Em elaboração, Vigentes, Renovados, Encerrados), Busca por número/cliente/motorista, Download de PDF do contrato, Anexo de PDF e Edição.
+- **Automação**: Geração automática da numeração do contrato (`CT-2024-XXX`).
+
+---
+
+### 11. PAGAMENTOS
+- **O que faz**: Registra o recebimento de valores vinculados aos contratos de locação.
+- **Funções disponíveis**: Indicadores (Total recebido, Número de transações, Com comprovante), Filtro por forma de pagamento (Pix, Cartão, Dinheiro, Transferência, Boleto), Upload de comprovante.
+
+---
+
+### 12. FLUXO DE CAIXA
+- **O que faz**: Registra todas as entradas e saídas de capital da locadora, calculando o saldo financeiro líquido.
+- **Funções disponíveis**: Indicadores (Entradas, Saídas e Resultado), Filtros por tipo/descrição, Cadastro de movimentações.
+
+---
+
+### 13. MANUTENÇÕES
+- **O que faz**: Gerencia os reparos preventivos e corretivos da frota nas oficinas credenciadas.
+- **Funções disponíveis**: Indicadores por status, Controle de oficina e custos, Anexo de fotos do reparo, Atualização automática do status do veículo para "Em manutenção".
+
+---
+
+### 14. VISTORIAS
+- **O que faz**: Garante a integridade do veículo no momento da saída (retirada) e na devolução.
+- **Funções disponíveis**: Controle de quilometragem e nível de combustível, Checklist de 11 fotos obrigatórias (Frente, Traseira, Laterais, Painel, Hodômetro, Combustível, Interior, Porta-malas, Rodas/Pneus e Avarias).
+
+---
+
+### 15. MULTAS
+- **O que faz**: Gerencia autos de infração de trânsito vinculados aos veículos e atribuição aos motoristas responsáveis.
+- **Funções disponíveis**: Controle de pontuação, órgão autuador, vencimento, repasse do valor ao motorista e upload da notificação.
+
+---
+
+### 16. SINISTROS
+- **O que faz**: Registra e acompanha ocorrências graves (colisões, furtos, roubos e danos).
+- **Funções disponíveis**: Registro de protocolo, acionamento de seguradora, cálculo de franquia, responsabilidades financeiras e upload de laudos/fotos.
+
+---
+
+### 17. SUPORTE
+- **O que faz**: Centraliza chamados de assistência enviados pelos motoristas (pane mecânica, pneu furado, guincho, etc.).
+- **Funções disponíveis**: Controle de chamados por protocolo, prioridade e status (*Aberto*, *Em atendimento*, *Resolvido*).
+
+---
+
+### 18. RELATÓRIOS
+- **O que faz**: Consolida informações operacionais e financeiras para análise de métricas e tomada de decisão.
+- **Funções disponíveis**: Emissão por categoria (Operação, Financeiro, Pessoas, Ocorrências), seleção de período e exportação completa em CSV.
+
+---
+
+## 🔄 Fluxo Completo de Integração Entre as Áreas
+
+```
++------------------+
+|   SITE PÚBLICO   |
++--------+---------+
+         |
+         v
++------------------+     (Atendimento)      +------------------+     (Conversão)      +------------------+
+|   INTERESSADOS   | ---------------------> |   INTERESSADOS   | -------------------> |     CLIENTES     |
+|  (status: Novo)  |                        | (Em contato)     |                      | (Cadastro PF/PJ) |
++------------------+                        +------------------+                      +--------+---------+
+                                                                                               |
+                                                                                               v
++------------------+     (Aprovação CNH)    +------------------+                      +------------------+
+|    MOTORISTAS    | ---------------------> |    MOTORISTAS    | -------------------> |     RESERVAS     |
+|   (Em análise)   |                        |    (Aprovado)    |                      | (Status: Conf.)  |
++------------------+                        +------------------+                      +--------+---------+
+                                                                                               |
+                                                                                               v
++------------------+     (Pagamento)        +------------------+                      +------------------+
+|     COBRANÇA     | <--------------------- |    PAGAMENTOS    | <------------------- |    CONTRATOS     |
+|  (status: Paga)  |                        | (Com comprovante)|                      | (Status: Vigente)|
++--------+---------+                        +------------------+                      +--------+---------+
+         |                                                                                     |
+         v                                                                                     v
++------------------+                        +------------------+                      +------------------+
+|  FLUXO DE CAIXA  |                        |    VISTORIAS     | -------------------> |     LOCAÇÃO      |
+| (Entrada R$)     |                        | (Checklist 11 px)|                      | (Status: Ativa)  |
++------------------+                        +------------------+                      +--------+---------+
+                                                                                               |
+                                                                                               v
++------------------+                        +------------------+                      +------------------+
+|    DASHBOARD     | <--------------------- |     RELATÓRIOS   | <------------------- |     VEÍCULO      |
+|  (Atualiza Kpi)  |                        |  (Exporta CSV)   |                      | (Em Locação)     |
++------------------+                        +------------------+                      +------------------+
 ```
 
-## Configuração do banco
+---
 
-Crie um arquivo `.env` na raiz do projeto com suas credenciais locais:
+## 📊 Resumo das Funções por Área
 
-```env
-PORT=3001
-DB_HOST=localhost
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=sua_senha
-DB_NAME=optimus_db
-```
+| Área | Criar | Editar | Excluir | Ver Detalhes | Mudar Status | Exportar CSV | Anexo de Arquivo |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Dashboard** | - | - | - | - | - | - | - |
+| **Usuários** | Sim | Sim | Sim | - | Sim | Sim | - |
+| **Motoristas** | Sim | - | - | Sim | Sim | Sim | - |
+| **Veículos** | Sim | Sim | Sim | Sim | - | Sim | - |
+| **Locações** | Sim | - | - | Sim | Sim | Sim | - |
+| **Cobranças** | Sim | - | - | Sim | Sim | Sim | - |
+| **Interessados** | - | - | - | Sim | Sim | - | - |
+| **Clientes** | Sim | Sim | Sim | Sim | - | Sim | - |
+| **Reservas** | Sim | Sim | Sim | - | Sim | Sim | - |
+| **Contratos** | Sim | Sim | Sim | Sim | - | Sim | Sim (PDF) |
+| **Pagamentos** | Sim | Sim | Sim | - | - | Sim | Sim (Comprovante) |
+| **Fluxo de Caixa** | Sim | Sim | Sim | - | - | Sim | - |
+| **Manutenções** | Sim | Sim | Sim | - | Sim | Sim | Sim (Fotos) |
+| **Vistorias** | Sim | Sim | Sim | - | Sim | Sim | Sim (11 Fotos) |
+| **Multas** | Sim | Sim | Sim | - | Sim | Sim | Sim (Documento) |
+| **Sinistros** | Sim | Sim | Sim | - | Sim | Sim | Sim (Fotos/Docs) |
+| **Suporte** | Sim | Sim | Sim | - | Sim | Sim | - |
+| **Relatórios** | - | - | - | - | - | Sim | - |
 
-Para criar a estrutura e a base inicial:
+---
 
-```bash
-mysql -u root -p < schema.sql
-```
+## 🚀 Como Rodar o Projeto Localmente
 
-> O arquivo `schema.sql` cria o banco `optimus_db`, as tabelas e dados iniciais. A API também cria tabelas essenciais ao iniciar quando consegue se conectar ao MySQL.
+1. **Clonar o Repositório**:
+   ```bash
+   git clone https://github.com/AlanySouza2203/Optimus_Experience.git
+   cd Optimus_Experience
+   ```
 
-## Executar localmente
+2. **Instalar as Dependências**:
+   ```bash
+   npm install
+   ```
 
-Inicie a API em um terminal:
+3. **Configurar as Variáveis de Ambiente (`.env`)**:
+   Crie um arquivo `.env` na raiz do projeto com as credenciais do seu banco de dados MySQL ou TiDB Cloud:
+   ```env
+   PORT=3001
+   DB_HOST=localhost
+   DB_PORT=3306
+   DB_USER=root
+   DB_PASSWORD=suasenha
+   DB_NAME=optimus_db
+   DB_SSL=false
+   ```
 
-```bash
-npm run server
-```
+4. **Executar a Aplicação em Desenvolvimento**:
+   Em um terminal, inicie o backend:
+   ```bash
+   npm run server
+   ```
+   Em outro terminal, inicie o frontend com Vite:
+   ```bash
+   npm run dev
+   ```
 
-Em outro terminal, inicie o frontend:
+---
 
-```bash
-npm run dev
-```
-
-Abra o endereço exibido pelo Vite, normalmente `http://localhost:5173`.
-
-O frontend encaminha chamadas iniciadas por `/api` para `http://localhost:3001`. Caso necessário, defina `VITE_API_TARGET` antes de iniciar o Vite:
-
-```bash
-VITE_API_TARGET=http://localhost:3001 npm run dev
-```
-
-No PowerShell:
-
-```powershell
-$env:VITE_API_TARGET = 'http://localhost:3001'
-npm run dev
-```
-
-## Acesso administrativo de demonstração
-
-| Perfil | E-mail | Senha |
-| --- | --- | --- |
-| Administrador | `admin@optimusexperience.com.br` | `admin123` |
-| Gestor | `gestor@optimusexperience.com.br` | `gestor123` |
-| Atendimento | `atendente@optimusexperience.com.br` | `atendente123` |
-
-Essas credenciais são somente para desenvolvimento/demonstração. Altere-as antes de qualquer publicação.
-
-## Scripts disponíveis
-
-| Comando | Descrição |
-| --- | --- |
-| `npm run dev` | Inicia o frontend Vite em desenvolvimento |
-| `npm run server` | Inicia a API Express |
-| `npm run build` | Gera a versão de produção em `dist/` |
-| `npm run preview` | Serve localmente a versão gerada em `dist/` |
-| `npm run lint` | Executa a análise estática com Oxlint |
-
-## Principais rotas da API
-
-A API usa o prefixo `/api`.
-
-| Grupo | Rotas principais |
-| --- | --- |
-| Saúde e autenticação | `GET /health`, `POST /auth/login` |
-| Pessoas | `/users`, `/clients`, `/drivers` |
-| Operação | `/vehicles`, `/plans`, `/reservations`, `/contracts` |
-| Financeiro | `/payments`, `/collections`, `/admin/cashEntries` |
-| Frota | `/maintenances`, `/fines`, `/incidents` |
-| Atendimento | `/support`, `/proposals`, `/interessados` |
-| Administração | `/permissions`, `/admin/overview`, `/notifications` |
-
-Consulte [server.js](./server.js) para os métodos e corpos aceitos por cada rota.
-
-## Estrutura do projeto
-
-```text
-├── public/                 # Ícones e arquivos públicos
-├── src/
-│   ├── assets/             # Imagens locais
-│   ├── components/         # Componentes do site e painel administrativo
-│   ├── App.jsx             # Composição da aplicação
-│   └── main.jsx            # Inicialização React
-├── server.js               # API Express e integração MySQL/fallback
-├── schema.sql              # Banco, tabelas e dados iniciais
-├── vite.config.js          # Vite e proxy para a API
-└── package.json            # Dependências e scripts
-```
-
-## Dados e comportamento financeiro
-
-- **Entradas do mês** no dashboard somam pagamentos recebidos e lançamentos de entrada do fluxo de caixa no mês atual.
-- **Saídas do mês** consideram lançamentos do tipo `Saída` no fluxo de caixa.
-- Os relatórios financeiros usam os filtros ativos de período e status para recalcular receitas, despesas e saldo.
-
-## Segurança e produção
-
-O projeto atual foi estruturado para ambiente local/demonstração. Antes de publicar em produção, recomenda-se:
-
-- usar hash de senha com bcrypt ou equivalente;
-- adicionar autenticação baseada em token/sessão e autorização no servidor;
-- remover credenciais de demonstração e nunca versionar senhas reais;
-- restringir CORS aos domínios autorizados;
-- validar entradas no servidor e configurar logs/monitoramento;
-- usar variáveis de ambiente seguras no provedor de hospedagem.
-
-## Verificação
-
-```bash
-npm run lint
-npm run build
-```
-
-## Licença
-
-Este projeto é privado. Defina uma licença antes de redistribuí-lo.
+## 🔗 Link de Deploy
+Acesse a versão final publicada na Vercel: **[https://optimus-experience-zmr2.vercel.app/](https://optimus-experience-zmr2.vercel.app/)**
