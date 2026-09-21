@@ -68,10 +68,10 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
         </div>
       </div>
 
-      {/* Main Navbar Bar */}
+      {/* Navbar Header Bar - Exibe EXCLUSIVAMENTE a Logo (esquerda) e o ícone (≡) (direita) */}
       <header className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
         <div className="container navbar-container">
-          {/* Brand Logo */}
+          {/* Brand Logo (esquerda) */}
           <a href="#" className="navbar-brand">
             <div className="logo-icon-wrapper">
               <Car className="logo-icon" size={22} />
@@ -82,46 +82,10 @@ export default function Navbar({ onOpenProposal, onOpenAdmin, onOpenDriverSuppor
             </div>
           </a>
 
-          {/* Desktop Nav Links */}
-          <nav className="nav-menu">
-            <a href="#inicio" className="nav-link">Início</a>
-            <a href="#beneficios" className="nav-link">Benefícios</a>
-            <a href="#veiculos" className="nav-link">Veículos</a>
-            <a href="#planos" className="nav-link">Planos</a>
-            <a href="#como-funciona" className="nav-link">Como funciona</a>
-            <a href="#faq" className="nav-link">FAQ</a>
-            <a href="#contato" className="nav-link">Contato</a>
-          </nav>
-
-          {/* Action Buttons */}
+          {/* Ícone de 3 barrinhas (≡) (direita) */}
           <div className="nav-actions">
-            <div className="desktop-actions">
-              <button 
-                className="btn btn-secondary btn-sm nav-login-btn"
-                onClick={onOpenAdmin}
-              >
-                Área Administrativa
-              </button>
-
-              <button
-                className="btn btn-secondary btn-sm nav-support-btn"
-                onClick={onOpenDriverSupport}
-              >
-                <Headphones size={16} />
-                Suporte
-              </button>
-              
-              <button 
-                className="btn btn-primary btn-sm nav-cta-btn"
-                onClick={onOpenProposal}
-              >
-                <span>Solicitar proposta</span>
-              </button>
-            </div>
-
-            {/* Mobile Toggler Button */}
             <button 
-              className="navbar-toggler mobile-toggle" 
+              className="navbar-toggler" 
               type="button" 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-controls="navbarToggleExternalContent" 

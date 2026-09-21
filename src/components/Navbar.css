@@ -1,9 +1,15 @@
-.navbar {
+/* Bootstrap pos-f-t pattern: Top Collapsible Fixed Container */
+.pos-f-t {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   z-index: 1000;
+}
+
+.navbar {
+  position: relative;
+  width: 100%;
   padding: 1rem 0;
   transition: all 0.3s ease;
   background: rgba(255, 255, 255, 0.98);
@@ -16,15 +22,6 @@
   background: #FFFFFF;
   border-bottom: 1px solid #E2E8F0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-}
-
-/* Bootstrap pos-f-t pattern: Top Collapsible Drawer */
-.pos-f-t {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  z-index: 1000;
 }
 
 .collapse {
@@ -133,72 +130,14 @@
   letter-spacing: 0.15em;
 }
 
-.nav-menu {
-  display: flex;
-  align-items: center;
-  gap: 1.75rem;
-}
-
-.nav-link {
-  color: #475569;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 0.92rem;
-  transition: var(--transition);
-  position: relative;
-}
-
-.nav-link:hover {
-  color: var(--primary);
-}
-
-.nav-link::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  width: 0%;
-  height: 2px;
-  background: var(--primary);
-  transition: width 0.25s ease;
-  border-radius: 2px;
-}
-
-.nav-link:hover::after {
-  width: 100%;
-}
-
 .nav-actions {
   display: flex;
   align-items: center;
   gap: 0.85rem;
 }
 
-.desktop-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.85rem;
-}
-
-.btn-sm {
-  padding: 0.65rem 1.25rem;
-  font-size: 0.88rem;
-}
-
-.nav-login-btn,
-.nav-support-btn,
-.nav-cta-btn {
-  min-height: 38px;
-  padding: 0.5rem 1rem;
-  font-size: 0.82rem;
-}
-
-.nav-support-btn {
-  gap: 0.35rem;
-}
-
 .navbar-toggler {
-  display: none !important;
+  display: flex !important;
   background: #F1F5F9;
   border: 1px solid #CBD5E1;
   padding: 0.5rem 0.75rem;
@@ -275,23 +214,4 @@
 
 .btn-full {
   width: 100%;
-}
-
-/* Mobile Media Query Rules: Hide ALL desktop links and action buttons on <= 1280px */
-@media screen and (max-width: 1280px) {
-  .nav-menu,
-  .desktop-actions,
-  .nav-actions .desktop-actions,
-  .nav-actions .nav-login-btn,
-  .nav-actions .nav-support-btn,
-  .nav-actions .nav-cta-btn,
-  .nav-login-btn,
-  .nav-support-btn,
-  .nav-cta-btn {
-    display: none !important;
-  }
-
-  .navbar-toggler {
-    display: flex !important;
-  }
 }
