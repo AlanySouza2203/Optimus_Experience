@@ -14,12 +14,10 @@
 
 | Campo | Informação |
 |---|---|
-| **Instituição de Ensino** | A ser definido pela equipe |
-| **Curso** | A ser definido pela equipe |
-| **Disciplina** | A ser definido pela equipe |
+| **Disciplina** | Projeto Integrador |
 | **Orientador** | Profº Hudson Neves |
 | **Autora do projeto** | Alany Souza |
-
+| **Modalidade** | Projeto individual |
 ## 2. Descrição do Projeto
 
 O **Optimus Experience** é uma aplicação web para gestão operacional, financeira e de frota de uma locadora de veículos. O sistema reúne funcionalidades para acompanhar o relacionamento com interessados, o cadastro de clientes e motoristas, a disponibilidade dos veículos, as locações, os contratos, os pagamentos e as demais rotinas administrativas.
